@@ -33,39 +33,14 @@ exports.handler = async function(event, context) {
     // Build optional image message part if provided
     const imageDataUrl = image && mimeType ? `data:${mimeType};base64,${image}` : null;
 
-    // Base tags that must always be included
+    // Always-include base tags
     const BASE_TAGS = ["#辞海", "#2025上海书展", "#书香中国上海周", "#辞海星空大章", "#云端辞海·知识随行"];
-
-    const extractHashtags = (text) => {
-      try {
-        return (text.match(/#[^\s#]+/g) || []).map(t => t.trim());
-      } catch {
-        return [];
+    const mergeBaseTags = (aiTags) => {
+      const set = new Set(BASE_TAGS);
+      for (const tag of aiTags || []) {
+        if (typeof tag === 'string' && tag.trim().startsWith('#')) set.add(tag.trim());
       }
-    };
-    // Ensure we always return within Netlify function timeout limits
-    const TIMEOUT_MS = Number(process.env.AI_HTTP_TIMEOUT_MS || 25000);
-    const fetchWithTimeout = async (url, options) => {
-      const controller = new AbortController();
-      const id = setTimeout(() => controller.abort(), TIMEOUT_MS);
-      try {
-        const resp = await fetch(url, { ...(options || {}), signal: controller.signal });
-        return resp;
-      } finally {
-        clearTimeout(id);
-      }
-    };
-
-    const withBaseTags = (aiTags) => {
-      const combined = [];
-      const seen = new Set();
-      for (const t of BASE_TAGS) {
-        if (!seen.has(t)) { seen.add(t); combined.push(t); }
-      }
-      for (const t of aiTags || []) {
-        if (!seen.has(t)) { seen.add(t); combined.push(t); }
-      }
-      return combined;
+      return Array.from(set);
     };
 
     // Provider configuration
@@ -103,17 +78,19 @@ exports.handler = async function(event, context) {
     if (stepfunKey && imageDataUrl) {
       const stepBase = process.env.STEPFUN_API_BASE || 'https://api.stepfun.com/v1';
       const primaryUrl = `${stepBase.replace(/\/$/, '')}/chat/completions`;
-      const stepModel = process.env.STEPFUN_VISION_MODEL || 'step-1v';
+      const stepModel = process.env.STEPFUN_VISION_MODEL || 'step-1v-32k';
 
       const buildBodies = () => {
-        const common = { model: stepModel, max_tokens: 600, temperature: 0.7 };
+        const common = { model: stepModel, max_tokens: 1000, temperature: 0.7 };
         return [
           { ...common, messages: [ { role: 'user', content: [ { type: 'text', text: prompt }, { type: 'image_url', image_url: { url: imageDataUrl } } ] } ] },
-          { ...common, messages: [ { role: 'user', content: [ { type: 'text', text: prompt }, { type: 'image_url', image_url: imageDataUrl } ] } ] }
+          { ...common, messages: [ { role: 'user', content: [ { type: 'text', text: prompt }, { type: 'image_url', image_url: imageDataUrl } ] } ] },
+          { ...common, messages: [ { role: 'user', content: [ { type: 'text', text: prompt }, { type: 'image', image_url: imageDataUrl } ] } ] },
+          { ...common, messages: [ { role: 'user', content: prompt } ], images: [ { type: 'image_url', image_url: imageDataUrl } ] }
         ];
       };
 
-      const doCall = async (url, body) => fetchWithTimeout(url, {
+      const doCall = async (url, body) => fetch(url, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${stepfunKey}`,
@@ -154,7 +131,7 @@ exports.handler = async function(event, context) {
       const title = titleMatch ? titleMatch[1].trim() : "📚 辞海：知识的海洋，智慧的源泉";
       const mainText = mainTextMatch ? mainTextMatch[1].trim() : "今天分享这本陪伴我多年的辞海！作为一部权威的综合性辞书，辞海不仅收录了丰富的词汇，更是中华文化的瑰宝。";
       const hashtagsText = hashtagsMatch ? hashtagsMatch[1].trim() : "";
-      const hashtags = withBaseTags(extractHashtags(hashtagsText || aiResponse));
+      const hashtags = mergeBaseTags(hashtagsText.match(/#[^\s#]+/g));
 
       return {
         statusCode: 200,
@@ -177,7 +154,7 @@ exports.handler = async function(event, context) {
         temperature: 0.7
       };
 
-      const stepResp = await fetchWithTimeout(stepUrl, {
+      const stepResp = await fetch(stepUrl, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${stepfunKey}`,
@@ -200,7 +177,7 @@ exports.handler = async function(event, context) {
       const title = titleMatch ? titleMatch[1].trim() : "📚 辞海：知识的海洋，智慧的源泉";
       const mainText = mainTextMatch ? mainTextMatch[1].trim() : "今天分享这本陪伴我多年的辞海！作为一部权威的综合性辞书，辞海不仅收录了丰富的词汇，更是中华文化的瑰宝。";
       const hashtagsText = hashtagsMatch ? hashtagsMatch[1].trim() : "";
-      const hashtags = withBaseTags(extractHashtags(hashtagsText || aiResponse));
+      const hashtags = mergeBaseTags(hashtagsText.match(/#[^\s#]+/g));
 
       return {
         statusCode: 200,
@@ -227,7 +204,7 @@ exports.handler = async function(event, context) {
         temperature: 0.7
       };
 
-      const oaResp = await fetchWithTimeout(oaUrl, {
+      const oaResp = await fetch(oaUrl, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${openaiKey}`,
@@ -254,7 +231,7 @@ exports.handler = async function(event, context) {
       const title = titleMatch ? titleMatch[1].trim() : "📚 辞海：知识的海洋，智慧的源泉";
       const mainText = mainTextMatch ? mainTextMatch[1].trim() : "今天分享这本陪伴我多年的辞海！作为一部权威的综合性辞书，辞海不仅收录了丰富的词汇，更是中华文化的瑰宝。";
       const hashtagsText = hashtagsMatch ? hashtagsMatch[1].trim() : "";
-      const hashtags = withBaseTags(extractHashtags(hashtagsText || aiResponse));
+      const hashtags = mergeBaseTags(hashtagsText.match(/#[^\s#]+/g));
 
       return {
         statusCode: 200,
