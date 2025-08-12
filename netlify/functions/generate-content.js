@@ -1,4 +1,4 @@
-// Netlify function for AI content generation using DeepSeek API
+// Netlify function for AI content generation using StepFun Vision (primary) with optional OpenAI fallback
 exports.handler = async function(event, context) {
   // Enable CORS
   const headers = {
@@ -33,21 +33,9 @@ exports.handler = async function(event, context) {
     // Build optional image message part if provided
     const imageDataUrl = image && mimeType ? `data:${mimeType};base64,${image}` : null;
 
-    // DeepSeek API configuration
-    const apiKey = process.env.DEEPSEEK_API_KEY || process.env.REACT_APP_DEEPSEEK_API_KEY;
+    // Provider configuration
     const openaiKey = process.env.OPENAI_API_KEY || process.env.REACT_APP_OPENAI_API_KEY;
     const stepfunKey = process.env.STEPFUN_API_KEY || process.env.REACT_APP_STEPFUN_API_KEY;
-    if (!apiKey) {
-      return {
-        statusCode: 500,
-        headers,
-        body: JSON.stringify({ 
-          success: false, 
-          message: 'DeepSeek API key not configured' 
-        })
-      };
-    }
-    const apiUrl = 'https://api.deepseek.com/v1/chat/completions';
     
     const prompt = `你是一个专业的小红书内容创作AI助手。请根据用户提供的图片，生成高质量的小红书风格内容。
 
@@ -76,7 +64,7 @@ exports.handler = async function(event, context) {
 
 请分析这张图片并生成相应的小红书内容。`;
 
-    // If StepFun key is provided, prefer StepFun vision model (OpenAI-compatible schema)
+    // If StepFun key is provided, prefer StepFun vision/text model (OpenAI-compatible schema)
     if (stepfunKey && imageDataUrl) {
       const stepUrl = 'https://api.stepfun.com/v1/chat/completions';
       const stepModel = process.env.STEPFUN_VISION_MODEL || 'step-1v';
@@ -116,6 +104,51 @@ exports.handler = async function(event, context) {
         ? aiMessage.content.map(part => (typeof part === 'string' ? part : part.text || '')).join('\n')
         : (aiMessage?.content || '');
 
+      const titleMatch = aiResponse.match(/\*\*标题：\*\*\s*([^\n]+)/);
+      const mainTextMatch = aiResponse.match(/\*\*正文：\*\*\s*([\s\S]*?)(?=\*\*标签：\*\*)/);
+      const hashtagsMatch = aiResponse.match(/\*\*标签：\*\*\s*([^\n]+)/);
+      const title = titleMatch ? titleMatch[1].trim() : "📚 辞海：知识的海洋，智慧的源泉";
+      const mainText = mainTextMatch ? mainTextMatch[1].trim() : "今天分享这本陪伴我多年的辞海！作为一部权威的综合性辞书，辞海不仅收录了丰富的词汇，更是中华文化的瑰宝。";
+      const hashtagsText = hashtagsMatch ? hashtagsMatch[1].trim() : "#辞海 #2025上海书展 #书香中国上海周 #辞海星空大章 #云端辞海·知识随行";
+      const hashtags = hashtagsText.match(/#[^\s#]+/g) || ["#辞海", "#2025上海书展", "#书香中国上海周", "#辞海星空大章", "#云端辞海·知识随行"];
+
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ success: true, content: { title, mainText, hashtags } })
+      };
+    }
+
+    // StepFun text-only path (in case user didn't upload an image but still wants content)
+    if (stepfunKey && !imageDataUrl) {
+      const stepUrl = 'https://api.stepfun.com/v1/chat/completions';
+      const stepModel = process.env.STEPFUN_TEXT_MODEL || 'step-1';
+      const stepBody = {
+        model: stepModel,
+        messages: [
+          { role: 'user', content: prompt }
+        ],
+        max_tokens: 1000,
+        temperature: 0.7
+      };
+
+      const stepResp = await fetch(stepUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${stepfunKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(stepBody)
+      });
+
+      if (!stepResp.ok) {
+        const errText = await stepResp.text();
+        console.error('StepFun API error (text):', stepResp.status, errText);
+        throw new Error(`StepFun API request failed: ${stepResp.status} ${stepResp.statusText}`);
+      }
+
+      const stepData = await stepResp.json();
+      const aiResponse = stepData.choices?.[0]?.message?.content || '';
       const titleMatch = aiResponse.match(/\*\*标题：\*\*\s*([^\n]+)/);
       const mainTextMatch = aiResponse.match(/\*\*正文：\*\*\s*([\s\S]*?)(?=\*\*标签：\*\*)/);
       const hashtagsMatch = aiResponse.match(/\*\*标签：\*\*\s*([^\n]+)/);
@@ -185,66 +218,11 @@ exports.handler = async function(event, context) {
       };
     }
 
-    // DeepSeek chat does not currently accept image parts; send text-only to avoid 422
-    const requestBody = {
-      model: "deepseek-chat",
-      messages: [
-        {
-          role: "user",
-          content: prompt + (imageDataUrl ? "\n\n注意：如果你无法直接查看图片，请基于书籍照片（可能包含书封面、书脊、颜色、材质等）进行合理描述与创作。" : '')
-        }
-      ],
-      max_tokens: 1000,
-      temperature: 0.7
-    };
-
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(requestBody)
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('DeepSeek API error:', response.status, errorText);
-      throw new Error(`DeepSeek API request failed: ${response.status} ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    
-    // Parse the AI response to extract title, mainText, and hashtags
-    const aiResponse = data.choices?.[0]?.message?.content || '';
-    
-    // Extract content using regex patterns
-    const titleMatch = aiResponse.match(/\*\*标题：\*\*\s*([^\n]+)/);
-    const mainTextMatch = aiResponse.match(/\*\*正文：\*\*\s*([\s\S]*?)(?=\*\*标签：\*\*)/);
-    const hashtagsMatch = aiResponse.match(/\*\*标签：\*\*\s*([^\n]+)/);
-    
-    const title = titleMatch ? titleMatch[1].trim() : "📚 辞海：知识的海洋，智慧的源泉";
-    const mainText = mainTextMatch ? mainTextMatch[1].trim() : "今天分享这本陪伴我多年的辞海！作为一部权威的综合性辞书，辞海不仅收录了丰富的词汇，更是中华文化的瑰宝。";
-    const hashtagsText = hashtagsMatch ? hashtagsMatch[1].trim() : "#辞海 #2025上海书展 #书香中国上海周 #辞海星空大章 #云端辞海·知识随行";
-    
-    // Extract hashtags from the text
-    const hashtags = hashtagsText.match(/#[^\s#]+/g) || ["#辞海", "#2025上海书展", "#书香中国上海周", "#辞海星空大章", "#云端辞海·知识随行"];
-    
-    const generatedContent = {
-      title,
-      mainText,
-      hashtags
-    };
-
-    console.log('AI content generated successfully');
-    
+    // If we reach here, no provider is configured; return an error so client can fallback
     return {
-      statusCode: 200,
+      statusCode: 500,
       headers,
-      body: JSON.stringify({
-        success: true,
-        content: generatedContent
-      })
+      body: JSON.stringify({ success: false, message: 'No AI provider configured (StepFun or OpenAI)' })
     };
 
   } catch (error) {
