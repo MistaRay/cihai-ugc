@@ -54,7 +54,7 @@ const PhotoUpload = () => {
       setGeneratedContent(content);
     } catch (error) {
       console.error('Error generating content:', error);
-      setError('AI content generation failed. Please try again or contact support.');
+      setError('AI内容生成失败，请重试或联系客服。');
       // Fallback to default content if API fails
       const fallbackContent = {
         title: "📚 辞海：知识的海洋，智慧的源泉",
@@ -137,9 +137,7 @@ const PhotoUpload = () => {
             },
             {
               type: "image_url",
-              image_url: {
-                url: `data:image/jpeg;base64,${base64Image}`
-              }
+              image_url: `data:image/jpeg;base64,${base64Image}`
             }
           ]
         }
@@ -200,15 +198,15 @@ const PhotoUpload = () => {
            <>
              <Upload className="upload-icon" />
              <div className="upload-text">
-               {isDragActive ? 'Drop the image here...' : 'Click to upload or drag & drop'}
+               {isDragActive ? '将图片拖放到这里...' : '点击上传或拖拽图片'}
              </div>
              <div className="upload-subtext">
-               Upload a photo of a book to generate social media content
+               上传辞海照片，生成小红书内容
              </div>
            </>
                   ) : (
            <div className="preview-container">
-             <img src={previewUrl} alt="Preview" className="preview-image" />
+             <img src={previewUrl} alt="预览" className="preview-image" />
            </div>
          )}
        </div>
@@ -224,12 +222,12 @@ const PhotoUpload = () => {
              {isGenerating ? (
                <div className="loading">
                  <div className="spinner"></div>
-                 Analyzing image with AI...
+                 AI正在分析图片...
                </div>
              ) : (
                <>
                  <Sparkles size={20} style={{ marginRight: '8px' }} />
-                 Generate AI Content
+                 生成AI内容
                </>
              )}
            </button>
@@ -240,7 +238,7 @@ const PhotoUpload = () => {
         {!previewUrl && (
           <div className="button-container">
             <label htmlFor="file-input" className="generate-btn">
-              Choose File
+              选择文件
             </label>
             <input
               type="file"
@@ -262,7 +260,7 @@ const PhotoUpload = () => {
         <div className="content-result">
           <h2 className="content-title">
             <BookOpen size={24} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
-            Generated Content
+            生成的内容
           </h2>
           
           <div className="content-text">
@@ -285,7 +283,7 @@ const PhotoUpload = () => {
           </div>
           
           <button className="next-step-btn" onClick={handleNextStep}>
-            Next Step: Submit Post Link →
+            下一步：提交帖子链接 →
           </button>
         </div>
       )}

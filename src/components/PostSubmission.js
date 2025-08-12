@@ -4,8 +4,6 @@ import { Link as LinkIcon, ArrowLeft, CheckCircle, AlertCircle } from 'lucide-re
 
 const PostSubmission = () => {
   const [postLink, setPostLink] = useState('');
-  const [userName, setUserName] = useState('');
-  const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState(null);
   const [generatedContent, setGeneratedContent] = useState(null);
@@ -25,24 +23,22 @@ const PostSubmission = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!postLink.trim() || !userName.trim() || !email.trim()) {
-      setSubmitStatus({ type: 'error', message: 'Please fill in all fields' });
+    if (!postLink.trim()) {
+      setSubmitStatus({ type: 'error', message: '请填写帖子链接' });
       return;
     }
 
     setIsSubmitting(true);
     
     try {
-      // Submit to Vercel API
-      const response = await fetch('/api/submit-post', {
+      // Submit to Netlify API
+      const response = await fetch('/.netlify/functions/submit-post', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           postLink: postLink.trim(),
-          name: userName.trim(),
-          email: email.trim(),
           generatedContent
         }),
       });
@@ -57,8 +53,6 @@ const PostSubmission = () => {
         
         // Clear form
         setPostLink('');
-        setUserName('');
-        setEmail('');
         
         // Redirect after 3 seconds
         setTimeout(() => {
@@ -86,7 +80,7 @@ const PostSubmission = () => {
     return (
       <div className="loading">
         <div className="spinner"></div>
-        Loading...
+        加载中...
       </div>
     );
   }
@@ -95,23 +89,23 @@ const PostSubmission = () => {
     <div>
       <Link to="/" className="back-btn">
         <ArrowLeft size={16} style={{ marginRight: '8px' }} />
-        Back to Upload
+        返回上传页面
       </Link>
 
       <div className="submit-form">
         <h2 className="content-title">
           <LinkIcon size={24} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
-          Submit Your Post Link
+          提交您的帖子链接
         </h2>
         
         <p style={{ color: '#b0b0b0', marginBottom: '2rem', lineHeight: '1.6' }}>
-          Great! You've generated your social media content. Now please share the link to your published post so we can track your contribution to the 辞海 community! 📱✨
+          太好了！您已经生成了小红书内容。现在请分享您已发布帖子的链接，这样我们就能追踪您对辞海社区的贡献！📱✨
         </p>
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label htmlFor="postLink" className="form-label">
-              Social Media Post Link *
+              小红书帖子链接 *
             </label>
             <input
               type="url"
@@ -123,40 +117,7 @@ const PostSubmission = () => {
               required
             />
             <small style={{ color: '#666', fontSize: '0.9rem', marginTop: '0.5rem', display: 'block' }}>
-              Please paste the direct link to your published social media post
-            </small>
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="userName" className="form-label">
-              Your Name *
-            </label>
-            <input
-              type="text"
-              id="userName"
-              className="form-input"
-              placeholder="Enter your name"
-              value={userName}
-              onChange={(e) => setUserName(e.target.value)}
-              required
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="email" className="form-label">
-              Email Address *
-            </label>
-            <input
-              type="email"
-              id="email"
-              className="form-input"
-              placeholder="Enter your email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-            <small style={{ color: '#666', fontSize: '0.9rem', marginTop: '0.5rem', display: 'block' }}>
-              We'll use this to contact you about your submission
+              请粘贴您已发布的小红书帖子的直接链接
             </small>
           </div>
 
@@ -169,10 +130,10 @@ const PostSubmission = () => {
             {isSubmitting ? (
               <div className="loading">
                 <div className="spinner"></div>
-                Submitting...
+                提交中...
               </div>
             ) : (
-              'Submit Post Link'
+              '提交帖子链接'
             )}
           </button>
         </form>
@@ -191,7 +152,7 @@ const PostSubmission = () => {
         {generatedContent && (
           <div style={{ marginTop: '2rem', padding: '1.5rem', background: '#252525', borderRadius: '12px' }}>
             <h3 style={{ color: '#4ecdc4', marginBottom: '1rem', fontSize: '1.1rem' }}>
-              Generated Content Preview:
+              生成内容预览：
             </h3>
             <div style={{ color: '#b0b0b0', fontSize: '0.9rem', lineHeight: '1.5' }}>
               <div style={{ marginBottom: '0.5rem' }}>
