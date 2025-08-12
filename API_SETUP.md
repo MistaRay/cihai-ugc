@@ -27,13 +27,13 @@ The application has been successfully migrated from Zhipu API to DeepSeek API. H
 1. **Set Environment Variable** (recommended):
    ```bash
    # In your server directory
-   export DEEPSEEK_API_KEY="sk-3a23e99afe6a4981b5d66b04d73fb73e"
+   export DEEPSEEK_API_KEY="your_deepseek_api_key_here"
    ```
 
 2. **Or create a .env file** (if not blocked by gitignore):
    ```bash
    # server/.env
-   DEEPSEEK_API_KEY=sk-3a23e99afe6a4981b5d66b04d73fb73e
+   DEEPSEEK_API_KEY=your_deepseek_api_key_here
    PORT=5000
    NODE_ENV=development
    ```
@@ -55,7 +55,7 @@ The application has been successfully migrated from Zhipu API to DeepSeek API. H
 1. **Set Environment Variable in Netlify**:
    - Go to your Netlify dashboard
    - Navigate to Site settings > Environment variables
-   - Add: `DEEPSEEK_API_KEY` = `sk-3a23e99afe6a4981b5d66b04d73fb73e`
+   - Add: `DEEPSEEK_API_KEY` = `your_deepseek_api_key_here`
 
 2. **Deploy**:
    - The application will automatically use the Netlify function
@@ -98,6 +98,7 @@ The application has been successfully migrated from Zhipu API to DeepSeek API. H
 - ✅ Environment variable support for secure key storage
 - ✅ Automatic fallback to local backend during development
 - ✅ Proper error handling and logging
+- ✅ No hardcoded API keys in source code
 
 ## 🚨 Troubleshooting
 
