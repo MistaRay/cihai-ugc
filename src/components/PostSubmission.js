@@ -20,11 +20,29 @@ const PostSubmission = () => {
     }
   }, [navigate]);
 
+  const isAllowedXHSUrl = (value) => {
+    try {
+      const url = new URL(value.trim());
+      const hostname = url.hostname.toLowerCase();
+      const allowedDomains = ['xiaohongshu.com', 'xhslink.com'];
+      return allowedDomains.some(
+        (domain) => hostname === domain || hostname.endsWith(`.${domain}`)
+      );
+    } catch {
+      return false;
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
     if (!postLink.trim()) {
       setSubmitStatus({ type: 'error', message: '请填写帖子链接' });
+      return;
+    }
+
+    if (!isAllowedXHSUrl(postLink)) {
+      setSubmitStatus({ type: 'error', message: '链接必须来自 xhslink.com 或 xiaohongshu.com' });
       return;
     }
 
@@ -114,6 +132,8 @@ const PostSubmission = () => {
               placeholder="https://www.xiaohongshu.com/..."
               value={postLink}
               onChange={(e) => setPostLink(e.target.value)}
+              pattern="https?://([A-Za-z0-9-]+\.)?(xiaohongshu|xhslink)\.com/.*"
+              title="链接必须来自 xhslink.com 或 xiaohongshu.com"
               required
             />
             <small style={{ color: '#666', fontSize: '0.9rem', marginTop: '0.5rem', display: 'block' }}>

@@ -44,6 +44,31 @@ exports.handler = async function(event, context) {
       };
     }
 
+    // Validate link domain (only allow xhslink.com or xiaohongshu.com)
+    const isAllowedXHSUrl = (value) => {
+      try {
+        const url = new URL(value);
+        const hostname = url.hostname.toLowerCase();
+        const allowedDomains = ['xhslink.com', 'xiaohongshu.com'];
+        return allowedDomains.some(
+          (domain) => hostname === domain || hostname.endsWith(`.${domain}`)
+        );
+      } catch {
+        return false;
+      }
+    };
+
+    if (!isAllowedXHSUrl(postLink)) {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({
+          success: false,
+          message: '链接必须来自 xhslink.com 或 xiaohongshu.com'
+        })
+      };
+    }
+
     // Get environment variables
     const MONGODB_URI = process.env.MONGODB_URI;
     const MONGODB_DB = process.env.MONGODB_DB;

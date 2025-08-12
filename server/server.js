@@ -28,6 +28,27 @@ app.post('/api/submit-post', (req, res) => {
       });
     }
 
+    // Validate link domain (only allow xhslink.com or xiaohongshu.com)
+    const isAllowedXHSUrl = (value) => {
+      try {
+        const url = new URL(value);
+        const hostname = url.hostname.toLowerCase();
+        const allowedDomains = ['xhslink.com', 'xiaohongshu.com'];
+        return allowedDomains.some(
+          (domain) => hostname === domain || hostname.endsWith(`.${domain}`)
+        );
+      } catch {
+        return false;
+      }
+    };
+
+    if (!isAllowedXHSUrl(postLink)) {
+      return res.status(400).json({
+        success: false,
+        message: '链接必须来自 xhslink.com 或 xiaohongshu.com'
+      });
+    }
+
     // Create submission object
     const submission = {
       id: Date.now().toString(),
@@ -102,7 +123,7 @@ app.put('/api/submissions/:id/status', (req, res) => {
   });
 });
 
-// AI Content Generation endpoint (multimodal + timeout)
+// AI Content Generation endpoint
 app.post('/api/generate-content', async (req, res) => {
   try {
     const { image } = req.body;
@@ -123,44 +144,45 @@ app.post('/api/generate-content', async (req, res) => {
       });
     }
     const apiUrl = 'https://api.deepseek.com/v1/chat/completions';
+    
+    const prompt = `你是一个专业的小红书内容创作AI助手。请根据用户提供的图片，生成高质量的小红书风格内容。
 
-    const prompt = `你是一个专业的小红书内容创作AI助手。请严格基于用户上传的图片进行描述与创作，聚焦书籍相关要素（如封面文字、作者、出版社、装帧、拍摄场景、材质与光线、使用情境等），避免空泛描述。请使用自然中文口吻。
-
-输出格式（只输出以下三部分，不要增加额外字符）：
+请严格按照以下格式输出，不要添加任何其他内容：
 
 **标题：**
 [吸引人的标题，不超过30字]
 
 **正文：**
-[180-260字正文内容，小红书风格，积极正面，包含对图片中真实元素的描述与感受，可给出1-2条使用建议]
+[200-300字正文内容，小红书风格，积极正面，包含实用建议或感悟]
 
 **标签：**
-[3-5个相关标签，用#分隔] （#辞海 #2025上海书展 #书香中国上海周 #辞海星空大章 #云端辞海·知识随行）
+[3-5个相关标签，用#分隔] （#标签1 #标签2 #标签3）
 
-要求：
-1. 所有描述必须可由图片推断或佐证，不要编造看不见的信息。
-2. 尽量点名图片中能读清的文字（如书名/作者/版次）或显著特征（颜色、装帧、边角磨损、拍摄环境）。
-3. 不要出现“我无法看到图片”等表述。`;
+重要规则：
+1. 直接生成内容，不要询问用户更多信息
+2. 不要添加任何介绍性文字或问候语
+3. 不要解释你的工作流程
+4. 只输出标题、正文、标签三个部分
+5. 基于用户提供的图片内容进行创作
+6. 内容要积极正面，符合小红书平台调性
+7. 标题要简洁有力，吸引人
+8. 正文要自然流畅，有感染力
+9. 标签要用 #辞海 #2025上海书展 #书香中国上海周 #辞海星空大章 #云端辞海·知识随行
+10. 根据照片生成文案，不是瞎编
 
-    const userContent = image
-      ? [
-          { type: 'text', text: prompt },
-          { type: 'image_url', image_url: `data:image/jpeg;base64,${image}` }
-        ]
-      : [{ type: 'text', text: `${prompt}\n（未提供图片时，围绕辞海或书籍主题写一段通用文案。）` }];
+请分析这张图片并生成相应的小红书内容。`;
 
     const requestBody = {
-      model: 'deepseek-multimodal',
+      model: "deepseek-chat",
       messages: [
-        { role: 'system', content: '你是图文理解与内容生成助手，要求内容真实、具体、贴合图片细节。' },
-        { role: 'user', content: userContent }
+        {
+          role: "user",
+          content: prompt
+        }
       ],
-      max_tokens: 520,
-      temperature: 0.6
+      max_tokens: 1000,
+      temperature: 0.7
     };
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 14000);
 
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -168,9 +190,8 @@ app.post('/api/generate-content', async (req, res) => {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(requestBody),
-      signal: controller.signal
-    }).finally(() => clearTimeout(timeoutId));
+      body: JSON.stringify(requestBody)
+    });
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -179,9 +200,9 @@ app.post('/api/generate-content', async (req, res) => {
     }
 
     const data = await response.json();
-
+    
     // Parse the AI response to extract title, mainText, and hashtags
-    const aiResponse = data.choices?.[0]?.message?.content || '';
+    const aiResponse = data.choices[0].message.content;
     
     // Extract content using regex patterns
     const titleMatch = aiResponse.match(/\*\*标题：\*\*\s*([^\n]+)/);
@@ -210,10 +231,9 @@ app.post('/api/generate-content', async (req, res) => {
 
   } catch (error) {
     console.error('Error generating AI content:', error);
-    const isTimeout = error?.name === 'AbortError';
-    res.status(isTimeout ? 504 : 500).json({
+    res.status(500).json({
       success: false,
-      message: isTimeout ? '生成超时，请稍后重试' : 'AI内容生成失败，请稍后重试',
+      message: 'AI内容生成失败，请稍后重试',
       error: error.message
     });
   }
