@@ -178,8 +178,13 @@ body {
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .content-result {
@@ -247,6 +252,22 @@ body {
   background: linear-gradient(45deg, #ffed4e, #ff8c42);
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(255, 215, 0, 0.4);
+}
+
+/* Button container for proper centering */
+.button-container {
+  text-align: center;
+  margin-top: 1.5rem;
+  width: 100%;
+}
+
+.button-container-mobile {
+  text-align: center;
+  margin-top: 2rem;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .submit-form {
@@ -350,78 +371,94 @@ body {
   .App-header h1 {
     font-size: 2rem;
   }
-  
+
   .App-header p {
     font-size: 1rem;
   }
-  
+
   .App-main {
     padding: 1rem;
     max-width: 100%;
   }
-  
+
   .upload-container {
     padding: 2rem 1rem;
     margin: 0 0.5rem;
   }
-  
+
   .upload-icon {
     font-size: 3rem;
   }
-  
+
   .upload-text {
     font-size: 1.1rem;
   }
-  
+
   .upload-subtext {
     font-size: 0.85rem;
   }
-  
+
   .preview-image {
     max-height: 300px;
     width: 100%;
     object-fit: contain;
   }
-  
+
+  .button-container {
+    margin-top: 2rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+  }
+
   .generate-btn {
     padding: 0.875rem 1.5rem;
     font-size: 1rem;
     width: 90%;
     max-width: 300px;
+    margin: 0 auto;
+    display: block;
+    position: relative;
+    left: 50%;
+    transform: translateX(-50%);
   }
-  
+
   .next-step-btn {
     padding: 0.875rem 1.5rem;
     font-size: 1rem;
     width: 90%;
     max-width: 300px;
+    margin: 0 auto;
+    display: block;
   }
-  
+
   .content-result,
   .submit-form {
     padding: 1.5rem;
     margin: 0 0.5rem;
   }
-  
+
   .content-text {
     padding: 1rem;
     font-size: 0.9rem;
   }
-  
+
   .content-hashtags {
     justify-content: center;
   }
-  
+
   .hashtag {
     font-size: 0.8rem;
     padding: 0.4rem 0.8rem;
   }
-  
+
   .form-input {
     padding: 0.875rem;
-    font-size: 16px; /* Prevents zoom on iOS */
+    font-size: 16px;
+    /* Prevents zoom on iOS */
   }
-  
+
   .submit-btn {
     padding: 0.875rem 1.5rem;
     font-size: 1rem;
@@ -433,39 +470,47 @@ body {
   .App-header h1 {
     font-size: 1.75rem;
   }
-  
+
   .App-header {
     padding: 1.5rem 0.5rem;
   }
-  
+
   .upload-container {
     padding: 1.5rem 0.75rem;
   }
-  
+
   .upload-icon {
     font-size: 2.5rem;
   }
-  
+
   .upload-text {
     font-size: 1rem;
   }
-  
+
+  .button-container {
+    margin-top: 1.5rem;
+  }
+
   .generate-btn,
   .next-step-btn {
     width: 100%;
-    margin: 0 0.5rem;
+    margin: 0 auto;
+    display: block;
+    position: relative;
+    left: 50%;
+    transform: translateX(-50%);
   }
-  
+
   .content-result,
   .submit-form {
     padding: 1rem;
     margin: 0 0.25rem;
   }
-  
+
   .content-title {
     font-size: 1.25rem;
   }
-  
+
   .content-text {
     padding: 0.75rem;
     font-size: 0.85rem;
