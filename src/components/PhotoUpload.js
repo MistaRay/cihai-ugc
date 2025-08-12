@@ -226,7 +226,7 @@ const PhotoUpload = () => {
       {generatedContent && (
         <div className="content-result">
           <div className="content-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <h2 className="content-title" style={{ margin: 0 }}>
+            <h2 className="content-title">
               <BookOpen size={24} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
               生成的内容
             </h2>
