@@ -33,6 +33,29 @@ exports.handler = async function(event, context) {
     // Build optional image message part if provided
     const imageDataUrl = image && mimeType ? `data:${mimeType};base64,${image}` : null;
 
+    // Base tags that must always be included
+    const BASE_TAGS = ["#辞海", "#2025上海书展", "#书香中国上海周", "#辞海星空大章", "#云端辞海·知识随行"];
+
+    const extractHashtags = (text) => {
+      try {
+        return (text.match(/#[^\s#]+/g) || []).map(t => t.trim());
+      } catch {
+        return [];
+      }
+    };
+
+    const withBaseTags = (aiTags) => {
+      const combined = [];
+      const seen = new Set();
+      for (const t of BASE_TAGS) {
+        if (!seen.has(t)) { seen.add(t); combined.push(t); }
+      }
+      for (const t of aiTags || []) {
+        if (!seen.has(t)) { seen.add(t); combined.push(t); }
+      }
+      return combined;
+    };
+
     // Provider configuration
     const openaiKey = process.env.OPENAI_API_KEY || process.env.REACT_APP_OPENAI_API_KEY;
     const stepfunKey = process.env.STEPFUN_API_KEY || process.env.REACT_APP_STEPFUN_API_KEY;
@@ -120,8 +143,8 @@ exports.handler = async function(event, context) {
       const hashtagsMatch = aiResponse.match(/\*\*标签：\*\*\s*([^\n]+)/);
       const title = titleMatch ? titleMatch[1].trim() : "📚 辞海：知识的海洋，智慧的源泉";
       const mainText = mainTextMatch ? mainTextMatch[1].trim() : "今天分享这本陪伴我多年的辞海！作为一部权威的综合性辞书，辞海不仅收录了丰富的词汇，更是中华文化的瑰宝。";
-      const hashtagsText = hashtagsMatch ? hashtagsMatch[1].trim() : "#辞海 #2025上海书展 #书香中国上海周 #辞海星空大章 #云端辞海·知识随行";
-      const hashtags = hashtagsText.match(/#[^\s#]+/g) || ["#辞海", "#2025上海书展", "#书香中国上海周", "#辞海星空大章", "#云端辞海·知识随行"];
+      const hashtagsText = hashtagsMatch ? hashtagsMatch[1].trim() : "";
+      const hashtags = withBaseTags(extractHashtags(hashtagsText || aiResponse));
 
       return {
         statusCode: 200,
@@ -166,8 +189,8 @@ exports.handler = async function(event, context) {
       const hashtagsMatch = aiResponse.match(/\*\*标签：\*\*\s*([^\n]+)/);
       const title = titleMatch ? titleMatch[1].trim() : "📚 辞海：知识的海洋，智慧的源泉";
       const mainText = mainTextMatch ? mainTextMatch[1].trim() : "今天分享这本陪伴我多年的辞海！作为一部权威的综合性辞书，辞海不仅收录了丰富的词汇，更是中华文化的瑰宝。";
-      const hashtagsText = hashtagsMatch ? hashtagsMatch[1].trim() : "#辞海 #2025上海书展 #书香中国上海周 #辞海星空大章 #云端辞海·知识随行";
-      const hashtags = hashtagsText.match(/#[^\s#]+/g) || ["#辞海", "#2025上海书展", "#书香中国上海周", "#辞海星空大章", "#云端辞海·知识随行"];
+      const hashtagsText = hashtagsMatch ? hashtagsMatch[1].trim() : "";
+      const hashtags = withBaseTags(extractHashtags(hashtagsText || aiResponse));
 
       return {
         statusCode: 200,
@@ -220,8 +243,8 @@ exports.handler = async function(event, context) {
       const hashtagsMatch = aiResponse.match(/\*\*标签：\*\*\s*([^\n]+)/);
       const title = titleMatch ? titleMatch[1].trim() : "📚 辞海：知识的海洋，智慧的源泉";
       const mainText = mainTextMatch ? mainTextMatch[1].trim() : "今天分享这本陪伴我多年的辞海！作为一部权威的综合性辞书，辞海不仅收录了丰富的词汇，更是中华文化的瑰宝。";
-      const hashtagsText = hashtagsMatch ? hashtagsMatch[1].trim() : "#辞海 #2025上海书展 #书香中国上海周 #辞海星空大章 #云端辞海·知识随行";
-      const hashtags = hashtagsText.match(/#[^\s#]+/g) || ["#辞海", "#2025上海书展", "#书香中国上海周", "#辞海星空大章", "#云端辞海·知识随行"];
+      const hashtagsText = hashtagsMatch ? hashtagsMatch[1].trim() : "";
+      const hashtags = withBaseTags(extractHashtags(hashtagsText || aiResponse));
 
       return {
         statusCode: 200,
