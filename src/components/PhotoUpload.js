@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDropzone } from 'react-dropzone';
-import { Upload, BookOpen, Sparkles } from 'lucide-react';
+import { Upload, BookOpen, Sparkles, Copy as CopyIcon } from 'lucide-react';
 
 const PhotoUpload = () => {
   const [selectedFile, setSelectedFile] = useState(null);
@@ -9,6 +9,7 @@ const PhotoUpload = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedContent, setGeneratedContent] = useState(null);
   const [error, setError] = useState(null);
+  const [copied, setCopied] = useState(false);
   const navigate = useNavigate();
 
   const onDrop = useCallback((acceptedFiles) => {
@@ -48,6 +49,28 @@ const PhotoUpload = () => {
       setPreviewUrl(url);
       setGeneratedContent(null);
       setError(null);
+    }
+  };
+
+  const handleCopy = async () => {
+    if (!generatedContent) return;
+    const textToCopy = `标题：${generatedContent.title}\n\n正文：${generatedContent.mainText}\n\n标签：${generatedContent.hashtags.join(' ')}`;
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(textToCopy);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = textToCopy;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch (err) {
+      console.error('Copy failed:', err);
+      setError('复制失败，请手动选择文本复制。');
     }
   };
 
@@ -202,10 +225,19 @@ const PhotoUpload = () => {
 
       {generatedContent && (
         <div className="content-result">
-          <h2 className="content-title">
-            <BookOpen size={24} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
-            生成的内容
-          </h2>
+          <div className="content-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <h2 className="content-title" style={{ margin: 0 }}>
+              <BookOpen size={24} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+              生成的内容
+            </h2>
+            <button
+              className="copy-btn"
+              onClick={handleCopy}
+              style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+            >
+              <CopyIcon size={18} /> {copied ? '已复制' : '复制'}
+            </button>
+          </div>
           
           <div className="content-text">
             <strong>标题：</strong>
@@ -226,9 +258,11 @@ const PhotoUpload = () => {
             ))}
           </div>
           
-          <button className="next-step-btn" onClick={handleNextStep}>
-            下一步：提交帖子链接 →
-          </button>
+          <div className="content-actions" style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+            <button className="next-step-btn" onClick={handleNextStep}>
+              下一步：提交帖子链接 →
+            </button>
+          </div>
         </div>
       )}
     </div>
