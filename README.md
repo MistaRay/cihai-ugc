@@ -18,11 +18,10 @@ A React-based AI agent application that generates social media content from book
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Node.js (version 14 or higher)
+- Node.js (version 18 or higher)
 - npm or yarn
 
-### Installation
-
+### Frontend Only (Development)
 1. **Clone or download the project**
    ```bash
    cd ai-book-agent
@@ -40,6 +39,39 @@ A React-based AI agent application that generates social media content from book
 
 4. **Open your browser**
    Navigate to `http://localhost:3000`
+
+### Full Stack (Frontend + Backend)
+1. **Install frontend dependencies**
+   ```bash
+   npm install
+   ```
+
+2. **Install backend dependencies**
+   ```bash
+   cd server && npm install
+   ```
+
+3. **Start backend server**
+   ```bash
+   cd server && npm run dev
+   ```
+
+4. **Start frontend** (in another terminal)
+   ```bash
+   npm start
+   ```
+
+5. **Backend API** will be available at `http://localhost:5000`
+
+### Using Docker
+1. **Run the full stack**
+   ```bash
+   docker-compose up --build
+   ```
+
+2. **Access the application**
+   - Frontend: `http://localhost:3000`
+   - Backend: `http://localhost:5000`
 
 ## 🏗️ Project Structure
 
@@ -93,6 +125,39 @@ The application automatically includes these required hashtags:
    - Name
    - Email address
 5. **Confirmation**: Success message and automatic redirect
+
+## 🚀 Deployment
+
+### China Deployment Options 🇨🇳
+
+#### Option 1: Alibaba Cloud (Recommended)
+- **ECS Instance**: Ubuntu 20.04, 2GB RAM, 1 CPU minimum
+- **RDS**: MySQL/PostgreSQL for database
+- **OSS**: For file storage
+- **CDN**: For global content delivery
+- **SSL Certificate**: Free SSL from Alibaba Cloud
+
+#### Option 2: Tencent Cloud
+- Similar to Alibaba Cloud with Tencent's infrastructure
+- Good for WeChat ecosystem integration
+
+#### Option 3: Huawei Cloud
+- Government-friendly compliance
+- Good for enterprise deployments
+
+### Backend Features
+- **Express.js API Server** with RESTful endpoints
+- **Form Submission Handling** for post links and user info
+- **Content Storage** for AI-generated content
+- **Admin Endpoints** for content management
+- **Health Monitoring** and logging
+- **Production Ready** with PM2 process management
+
+### Deployment Steps
+1. **Build the React app**: `npm run build`
+2. **Deploy backend**: Follow `server/README.md` instructions
+3. **Configure domain and SSL**
+4. **Set up monitoring and backups**
 
 ## 🎨 Customization
 

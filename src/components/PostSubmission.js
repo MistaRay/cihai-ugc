@@ -33,40 +33,50 @@ const PostSubmission = () => {
     setIsSubmitting(true);
     
     try {
-      // Simulate API call - in a real app, this would submit to your backend
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Store submission data (in a real app, this would go to your database)
-      const submissionData = {
-        postLink: postLink.trim(),
-        userName: userName.trim(),
-        email: email.trim(),
-        generatedContent,
-        submittedAt: new Date().toISOString()
-      };
-      
-      localStorage.setItem('submissionData', JSON.stringify(submissionData));
-      
-      setSubmitStatus({ 
-        type: 'success', 
-        message: 'Thank you! Your submission has been received successfully.' 
+      // Submit to Vercel API
+      const response = await fetch('/api/submit-post', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          postLink: postLink.trim(),
+          name: userName.trim(),
+          email: email.trim(),
+          generatedContent
+        }),
       });
-      
-      // Clear form
-      setPostLink('');
-      setUserName('');
-      setEmail('');
-      
-      // Redirect after 3 seconds
-      setTimeout(() => {
-        navigate('/');
-      }, 3000);
+
+      const data = await response.json();
+
+      if (data.success) {
+        setSubmitStatus({ 
+          type: 'success', 
+          message: '提交成功！我们会尽快审核您的内容。' 
+        });
+        
+        // Clear form
+        setPostLink('');
+        setUserName('');
+        setEmail('');
+        
+        // Redirect after 3 seconds
+        setTimeout(() => {
+          navigate('/');
+        }, 3000);
+      } else {
+        setSubmitStatus({ 
+          type: 'error', 
+          message: data.message || '提交失败，请重试' 
+        });
+      }
       
     } catch (error) {
       setSubmitStatus({ 
         type: 'error', 
-        message: 'An error occurred. Please try again.' 
+        message: '网络错误，请检查连接后重试' 
       });
+      console.error('Submission error:', error);
     } finally {
       setIsSubmitting(false);
     }

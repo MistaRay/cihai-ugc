@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import './App.css';
 import PhotoUpload from './components/PhotoUpload';
 import PostSubmission from './components/PostSubmission';
+import AdminDashboard from './components/AdminDashboard';
 
 function App() {
   return (
@@ -14,10 +15,11 @@ function App() {
         </header>
         
         <main className="App-main">
-          <Routes>
-            <Route path="/" element={<PhotoUpload />} />
-            <Route path="/submit-post" element={<PostSubmission />} />
-          </Routes>
+                  <Routes>
+          <Route path="/" element={<PhotoUpload />} />
+          <Route path="/submit-post" element={<PostSubmission />} />
+          <Route path="/admin" element={<AdminDashboard />} />
+        </Routes>
         </main>
         
         <footer className="App-footer">
