@@ -44,7 +44,7 @@ exports.handler = async function(event, context) {
       }
     };
     // Ensure we always return within Netlify function timeout limits
-    const TIMEOUT_MS = Number(process.env.AI_HTTP_TIMEOUT_MS || 9000);
+    const TIMEOUT_MS = Number(process.env.AI_HTTP_TIMEOUT_MS || 25000);
     const fetchWithTimeout = async (url, options) => {
       const controller = new AbortController();
       const id = setTimeout(() => controller.abort(), TIMEOUT_MS);
