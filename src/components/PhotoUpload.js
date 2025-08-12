@@ -144,6 +144,14 @@ const PhotoUpload = () => {
     if (cleanBase64.length > 20000000) { // 20MB limit
       throw new Error('Image file is too large. Please use a smaller image.');
     }
+    
+    // Ensure base64 is properly padded
+    while (cleanBase64.length % 4 !== 0) {
+      cleanBase64 += '=';
+    }
+    
+    console.log('Base64 length:', cleanBase64.length);
+    console.log('Base64 preview:', cleanBase64.substring(0, 100) + '...');
 
     const requestBody = {
       model: "deepseek-vision",
@@ -157,9 +165,7 @@ const PhotoUpload = () => {
             },
             {
               type: "image_url",
-              image_url: {
-                url: `data:image/jpeg;base64,${cleanBase64}`
-              }
+              image_url: `data:image/jpeg;base64,${cleanBase64}`
             }
           ]
         }
@@ -167,8 +173,23 @@ const PhotoUpload = () => {
       max_tokens: 1000,
       temperature: 0.7
     };
+    
+    // Alternative simpler format if the above doesn't work
+    const alternativeRequestBody = {
+      model: "deepseek-vision",
+      messages: [
+        {
+          role: "user",
+          content: prompt + "\n\n[Image attached]"
+        }
+      ],
+      max_tokens: 1000,
+      temperature: 0.7
+    };
 
     try {
+      console.log('Request body:', JSON.stringify(requestBody, null, 2));
+      
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
@@ -181,7 +202,45 @@ const PhotoUpload = () => {
       if (!response.ok) {
         const errorText = await response.text();
         console.error('DeepSeek API error response:', errorText);
-        throw new Error(`API request failed: ${response.status} ${response.statusText} - ${errorText}`);
+        
+        // Try alternative format if first attempt fails
+        console.log('Trying alternative request format...');
+        const altResponse = await fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(alternativeRequestBody)
+        });
+        
+        if (!altResponse.ok) {
+          const altErrorText = await altResponse.text();
+          console.error('Alternative format also failed:', altErrorText);
+          throw new Error(`API request failed: ${response.status} ${response.statusText} - ${errorText}`);
+        }
+        
+        // Use alternative response
+        const altData = await altResponse.json();
+        const aiResponse = altData.choices[0].message.content;
+        
+        // Parse the AI response to extract title, mainText, and hashtags
+        const titleMatch = aiResponse.match(/\*\*标题：\*\*\s*([^\n]+)/);
+        const mainTextMatch = aiResponse.match(/\*\*正文：\*\*\s*([\s\S]*?)(?=\*\*标签：\*\*)/);
+        const hashtagsMatch = aiResponse.match(/\*\*标签：\*\*\s*([^\n]+)/);
+        
+        const title = titleMatch ? titleMatch[1].trim() : "📚 辞海：知识的海洋，智慧的源泉";
+        const mainText = mainTextMatch ? mainTextMatch[1].trim() : "今天分享这本陪伴我多年的辞海！作为一部权威的综合性辞书，辞海不仅收录了丰富的词汇，更是中华文化的瑰宝。";
+        const hashtagsText = hashtagsMatch ? hashtagsMatch[1].trim() : "#辞海 #2025上海书展 #书香中国上海周 #辞海星空大章 #云端辞海·知识随行";
+        
+        // Extract hashtags from the text
+        const hashtags = hashtagsText.match(/#[^\s#]+/g) || ["#辞海", "#2025上海书展", "#书香中国上海周", "#辞海星空大章", "#云端辞海·知识随行"];
+        
+        return {
+          title,
+          mainText,
+          hashtags
+        };
       }
 
       const data = await response.json();
