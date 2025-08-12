@@ -92,7 +92,10 @@ const PhotoUpload = () => {
 
   // Call DeepSeek API for content generation
   const callDeepSeekAPI = async (base64Image) => {
-    const apiKey = 'sk-3a23e99afe6a4981b5d66b04d73fb73e';
+    const apiKey = process.env.REACT_APP_DEEPSEEK_API_KEY;
+    if (!apiKey) {
+      throw new Error('DeepSeek API key not configured');
+    }
     const apiUrl = 'https://api.deepseek.com/v1/chat/completions';
     
     const prompt = `你是一个专业的小红书内容创作AI助手。请根据用户提供的图片，生成高质量的小红书风格内容。
