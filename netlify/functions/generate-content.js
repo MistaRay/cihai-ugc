@@ -35,6 +35,8 @@ exports.handler = async function(event, context) {
 
     // DeepSeek API configuration
     const apiKey = process.env.DEEPSEEK_API_KEY || process.env.REACT_APP_DEEPSEEK_API_KEY;
+    const openaiKey = process.env.OPENAI_API_KEY || process.env.REACT_APP_OPENAI_API_KEY;
+    const stepfunKey = process.env.STEPFUN_API_KEY || process.env.REACT_APP_STEPFUN_API_KEY;
     if (!apiKey) {
       return {
         statusCode: 500,
@@ -74,21 +76,122 @@ exports.handler = async function(event, context) {
 
 请分析这张图片并生成相应的小红书内容。`;
 
-    // Prefer multimodal if the API supports it. We'll include an image_url part when available; otherwise
-    // the backend will still receive the text prompt and produce a reasonable result.
-    const userContent = imageDataUrl
-      ? [
-          { type: "text", text: prompt },
-          { type: "image_url", image_url: imageDataUrl }
-        ]
-      : [{ type: "text", text: prompt }];
+    // If StepFun key is provided, prefer StepFun vision model (OpenAI-compatible schema)
+    if (stepfunKey && imageDataUrl) {
+      const stepUrl = 'https://api.stepfun.com/v1/chat/completions';
+      const stepModel = process.env.STEPFUN_VISION_MODEL || 'step-1v';
+      const stepBody = {
+        model: stepModel,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: prompt },
+              { type: 'image_url', image_url: { url: imageDataUrl } }
+            ]
+          }
+        ],
+        max_tokens: 1000,
+        temperature: 0.7
+      };
 
+      const stepResp = await fetch(stepUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${stepfunKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(stepBody)
+      });
+
+      if (!stepResp.ok) {
+        const errText = await stepResp.text();
+        console.error('StepFun API error:', stepResp.status, errText);
+        throw new Error(`StepFun API request failed: ${stepResp.status} ${stepResp.statusText}`);
+      }
+
+      const stepData = await stepResp.json();
+      const aiMessage = stepData.choices?.[0]?.message;
+      const aiResponse = Array.isArray(aiMessage?.content)
+        ? aiMessage.content.map(part => (typeof part === 'string' ? part : part.text || '')).join('\n')
+        : (aiMessage?.content || '');
+
+      const titleMatch = aiResponse.match(/\*\*标题：\*\*\s*([^\n]+)/);
+      const mainTextMatch = aiResponse.match(/\*\*正文：\*\*\s*([\s\S]*?)(?=\*\*标签：\*\*)/);
+      const hashtagsMatch = aiResponse.match(/\*\*标签：\*\*\s*([^\n]+)/);
+      const title = titleMatch ? titleMatch[1].trim() : "📚 辞海：知识的海洋，智慧的源泉";
+      const mainText = mainTextMatch ? mainTextMatch[1].trim() : "今天分享这本陪伴我多年的辞海！作为一部权威的综合性辞书，辞海不仅收录了丰富的词汇，更是中华文化的瑰宝。";
+      const hashtagsText = hashtagsMatch ? hashtagsMatch[1].trim() : "#辞海 #2025上海书展 #书香中国上海周 #辞海星空大章 #云端辞海·知识随行";
+      const hashtags = hashtagsText.match(/#[^\s#]+/g) || ["#辞海", "#2025上海书展", "#书香中国上海周", "#辞海星空大章", "#云端辞海·知识随行"];
+
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ success: true, content: { title, mainText, hashtags } })
+      };
+    }
+
+    // If OpenAI key is provided, use OpenAI vision model for true image understanding
+    if (openaiKey && imageDataUrl) {
+      const oaUrl = 'https://api.openai.com/v1/chat/completions';
+      const oaBody = {
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: prompt },
+              { type: 'image_url', image_url: { url: imageDataUrl } }
+            ]
+          }
+        ],
+        max_tokens: 1000,
+        temperature: 0.7
+      };
+
+      const oaResp = await fetch(oaUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openaiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(oaBody)
+      });
+
+      if (!oaResp.ok) {
+        const errText = await oaResp.text();
+        console.error('OpenAI API error:', oaResp.status, errText);
+        throw new Error(`OpenAI API request failed: ${oaResp.status} ${oaResp.statusText}`);
+      }
+
+      const oaData = await oaResp.json();
+      const aiMessage = oaData.choices?.[0]?.message;
+      const aiResponse = Array.isArray(aiMessage?.content)
+        ? aiMessage.content.map(part => (typeof part === 'string' ? part : part.text || '')).join('\n')
+        : (aiMessage?.content || '');
+
+      const titleMatch = aiResponse.match(/\*\*标题：\*\*\s*([^\n]+)/);
+      const mainTextMatch = aiResponse.match(/\*\*正文：\*\*\s*([\s\S]*?)(?=\*\*标签：\*\*)/);
+      const hashtagsMatch = aiResponse.match(/\*\*标签：\*\*\s*([^\n]+)/);
+      const title = titleMatch ? titleMatch[1].trim() : "📚 辞海：知识的海洋，智慧的源泉";
+      const mainText = mainTextMatch ? mainTextMatch[1].trim() : "今天分享这本陪伴我多年的辞海！作为一部权威的综合性辞书，辞海不仅收录了丰富的词汇，更是中华文化的瑰宝。";
+      const hashtagsText = hashtagsMatch ? hashtagsMatch[1].trim() : "#辞海 #2025上海书展 #书香中国上海周 #辞海星空大章 #云端辞海·知识随行";
+      const hashtags = hashtagsText.match(/#[^\s#]+/g) || ["#辞海", "#2025上海书展", "#书香中国上海周", "#辞海星空大章", "#云端辞海·知识随行"];
+
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ success: true, content: { title, mainText, hashtags } })
+      };
+    }
+
+    // DeepSeek chat does not currently accept image parts; send text-only to avoid 422
     const requestBody = {
       model: "deepseek-chat",
       messages: [
         {
           role: "user",
-          content: userContent
+          content: prompt + (imageDataUrl ? "\n\n注意：如果你无法直接查看图片，请基于书籍照片（可能包含书封面、书脊、颜色、材质等）进行合理描述与创作。" : '')
         }
       ],
       max_tokens: 1000,
@@ -113,11 +216,7 @@ exports.handler = async function(event, context) {
     const data = await response.json();
     
     // Parse the AI response to extract title, mainText, and hashtags
-    const aiMessage = data.choices?.[0]?.message;
-    // Some providers return structured content parts; ensure we coerce to string
-    const aiResponse = Array.isArray(aiMessage?.content)
-      ? aiMessage.content.map(part => (typeof part === 'string' ? part : part.text || '')).join('\n')
-      : (aiMessage?.content || '');
+    const aiResponse = data.choices?.[0]?.message?.content || '';
     
     // Extract content using regex patterns
     const titleMatch = aiResponse.match(/\*\*标题：\*\*\s*([^\n]+)/);
