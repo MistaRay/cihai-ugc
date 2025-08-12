@@ -1,50 +1,63 @@
-# 辞海UGC Backend Server 🚀
+# 🚀 Backend Server for 辞海UGC
 
-Backend API server for the 辞海UGC application that handles form submissions and content management.
+A Node.js/Express backend server for handling user submissions and content management.
 
-## Features ✨
+## ✨ Features
 
-- **Form Submission API** - Receives post links and user information
-- **Content Storage** - Stores generated AI content and user submissions
-- **Admin Endpoints** - Manage and review submissions
-- **Health Monitoring** - API health check endpoints
-- **CORS Support** - Cross-origin resource sharing enabled
-- **Production Ready** - Serves React frontend in production
+- **RESTful API** for post submissions
+- **CORS enabled** for cross-origin requests
+- **Input validation** and error handling
+- **Health check endpoint** for monitoring
+- **Ready for production** deployment
 
-## Quick Start 🚀
+## 🚀 Quick Start
 
-### 1. Install Dependencies
-```bash
-cd server
-npm install
-```
+### Prerequisites
 
-### 2. Start Development Server
-```bash
-npm run dev
-```
+- Node.js 18+ 
+- npm or yarn
 
-### 3. Start Production Server
-```bash
-npm start
-```
+### Installation
 
-## API Endpoints 📡
+1. **Clone the repository**
+   ```bash
+   git clone <your-repo-url>
+   cd <your-repo-name>/server
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Create environment file**
+   ```bash
+   cp .env.example .env
+   # Edit .env with your configuration
+   ```
+
+4. **Start development server**
+   ```bash
+   npm run dev
+   ```
+
+5. **Start production server**
+   ```bash
+   npm start
+   ```
+
+## 🌐 API Endpoints
 
 ### POST `/api/submit-post`
-Submit a new post link and user information.
+Submit a new social media post link
 
 **Request Body:**
 ```json
 {
-  "postLink": "https://www.xiaohongshu.com/...",
+  "postLink": "https://example.com/post",
   "name": "User Name",
   "email": "user@example.com",
-  "generatedContent": {
-    "title": "Generated Title",
-    "mainText": "Generated content...",
-    "hashtags": ["#tag1", "#tag2"]
-  }
+  "generatedContent": "AI generated content..."
 }
 ```
 
@@ -53,23 +66,58 @@ Submit a new post link and user information.
 {
   "success": true,
   "message": "提交成功！我们会尽快审核您的内容。",
-  "submissionId": "1234567890"
+  "submissionId": "507f1f77bcf86cd799439011"
 }
 ```
 
 ### GET `/api/submissions`
-Get all submissions (admin endpoint).
+Get all submissions (admin endpoint)
+
+**Response:**
+```json
+{
+  "success": true,
+  "submissions": [
+    {
+      "_id": "507f1f77bcf86cd799439011",
+      "postLink": "https://example.com/post",
+      "name": "User Name",
+      "email": "user@example.com",
+      "generatedContent": "AI generated content...",
+      "timestamp": "2024-01-01T00:00:00.000Z",
+      "status": "pending"
+    }
+  ]
+}
+```
 
 ### GET `/api/submissions/:id`
-Get a specific submission by ID.
+Get a specific submission by ID
 
 ### PUT `/api/submissions/:id/status`
-Update submission status (admin endpoint).
+Update submission status (admin endpoint)
+
+**Request Body:**
+```json
+{
+  "status": "approved"
+}
+```
+
+**Valid statuses:** `pending`, `approved`, `rejected`
 
 ### GET `/api/health`
-Health check endpoint.
+Health check endpoint
 
-## Deployment Options 🌍
+**Response:**
+```json
+{
+  "status": "ok",
+  "timestamp": "2024-01-01T00:00:00.000Z"
+}
+```
+
+## 🚀 Deployment Options
 
 ### Option 1: Alibaba Cloud (Recommended for China 🇨🇳)
 
@@ -95,7 +143,7 @@ Health check endpoint.
 4. **Use PM2 for Process Management**
    ```bash
    npm install -g pm2
-   pm2 start server.js --name "cihai-ugc"
+   pm2 start server.js --name "your-app-name"
    pm2 startup
    pm2 save
    ```
@@ -119,8 +167,8 @@ Similar to Alibaba Cloud, but with Tencent's infrastructure.
 
 2. **Build and Run**
    ```bash
-   docker build -t cihai-ugc .
-   docker run -p 5000:5000 cihai-ugc
+   docker build -t your-app-name .
+   docker run -p 5000:5000 your-app-name
    ```
 
 ## Environment Variables 🔧

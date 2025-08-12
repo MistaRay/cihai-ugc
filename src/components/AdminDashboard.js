@@ -113,7 +113,7 @@ const AdminDashboard = () => {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `cihai-submissions-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `ugc-submissions-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
   };
