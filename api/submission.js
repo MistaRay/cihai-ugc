@@ -2,7 +2,7 @@
 import { MongoClient, ObjectId } from 'mongodb';
 
 const MONGODB_URI = process.env.MONGODB_URI;
-const MONGODB_DB = process.env.MONGODB_DB || 'cihai-ugc';
+const MONGODB_DB = process.env.MONGODB_DB;
 
 export default async function handler(req, res) {
   // Enable CORS
@@ -31,6 +31,12 @@ export default async function handler(req, res) {
   }
 
   try {
+    if (!MONGODB_URI || !MONGODB_DB) {
+      return res.status(500).json({
+        success: false,
+        message: 'Server configuration error: database environment variables are missing.'
+      });
+    }
     // Connect to MongoDB
     const client = await MongoClient.connect(MONGODB_URI);
     const db = client.db(MONGODB_DB);
