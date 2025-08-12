@@ -137,7 +137,7 @@ const PhotoUpload = () => {
             },
             {
               type: "image_url",
-              image_url: `data:image/jpeg;base64,${base64Image}`
+              image_url: base64Image
             }
           ]
         }
@@ -156,7 +156,9 @@ const PhotoUpload = () => {
     });
 
     if (!response.ok) {
-      throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+      const errorText = await response.text();
+      console.error('DeepSeek API error response:', errorText);
+      throw new Error(`API request failed: ${response.status} ${response.statusText} - ${errorText}`);
     }
 
     const data = await response.json();
