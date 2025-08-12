@@ -14,10 +14,16 @@ const PhotoUpload = () => {
   const onDrop = useCallback((acceptedFiles) => {
     const file = acceptedFiles[0];
     if (file && file.type.startsWith('image/')) {
+      // Check file size (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        setError('图片文件过大，请选择小于10MB的图片。');
+        return;
+      }
       setSelectedFile(file);
       const url = URL.createObjectURL(file);
       setPreviewUrl(url);
       setGeneratedContent(null);
+      setError(null);
     }
   }, []);
 
@@ -32,10 +38,16 @@ const PhotoUpload = () => {
   const handleFileSelect = (event) => {
     const file = event.target.files[0];
     if (file && file.type.startsWith('image/')) {
+      // Check file size (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        setError('图片文件过大，请选择小于10MB的图片。');
+        return;
+      }
       setSelectedFile(file);
       const url = URL.createObjectURL(file);
       setPreviewUrl(url);
       setGeneratedContent(null);
+      setError(null);
     }
   };
 
@@ -125,6 +137,14 @@ const PhotoUpload = () => {
 
 请分析这张图片并生成相应的小红书内容。`;
 
+    // Clean and validate base64 data
+    const cleanBase64 = base64Image.replace(/[^A-Za-z0-9+/=]/g, '');
+    
+    // Check if base64 is valid and not too long
+    if (cleanBase64.length > 20000000) { // 20MB limit
+      throw new Error('Image file is too large. Please use a smaller image.');
+    }
+
     const requestBody = {
       model: "deepseek-vision",
       messages: [
@@ -137,7 +157,9 @@ const PhotoUpload = () => {
             },
             {
               type: "image_url",
-              image_url: base64Image
+              image_url: {
+                url: `data:image/jpeg;base64,${cleanBase64}`
+              }
             }
           ]
         }
@@ -146,43 +168,48 @@ const PhotoUpload = () => {
       temperature: 0.7
     };
 
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(requestBody)
-    });
+    try {
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
+      });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('DeepSeek API error response:', errorText);
-      throw new Error(`API request failed: ${response.status} ${response.statusText} - ${errorText}`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('DeepSeek API error response:', errorText);
+        throw new Error(`API request failed: ${response.status} ${response.statusText} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      
+      // Parse the AI response to extract title, mainText, and hashtags
+      const aiResponse = data.choices[0].message.content;
+      
+      // Extract content using regex patterns
+      const titleMatch = aiResponse.match(/\*\*标题：\*\*\s*([^\n]+)/);
+      const mainTextMatch = aiResponse.match(/\*\*正文：\*\*\s*([\s\S]*?)(?=\*\*标签：\*\*)/);
+      const hashtagsMatch = aiResponse.match(/\*\*标签：\*\*\s*([^\n]+)/);
+      
+      const title = titleMatch ? titleMatch[1].trim() : "📚 辞海：知识的海洋，智慧的源泉";
+      const mainText = mainTextMatch ? mainTextMatch[1].trim() : "今天分享这本陪伴我多年的辞海！作为一部权威的综合性辞书，辞海不仅收录了丰富的词汇，更是中华文化的瑰宝。";
+      const hashtagsText = hashtagsMatch ? hashtagsMatch[1].trim() : "#辞海 #2025上海书展 #书香中国上海周 #辞海星空大章 #云端辞海·知识随行";
+      
+      // Extract hashtags from the text
+      const hashtags = hashtagsText.match(/#[^\s#]+/g) || ["#辞海", "#2025上海书展", "#书香中国上海周", "#辞海星空大章", "#云端辞海·知识随行"];
+      
+      return {
+        title,
+        mainText,
+        hashtags
+      };
+    } catch (error) {
+      console.error('DeepSeek API call error:', error);
+      throw error;
     }
-
-    const data = await response.json();
-    
-    // Parse the AI response to extract title, mainText, and hashtags
-    const aiResponse = data.choices[0].message.content;
-    
-    // Extract content using regex patterns
-    const titleMatch = aiResponse.match(/\*\*标题：\*\*\s*([^\n]+)/);
-    const mainTextMatch = aiResponse.match(/\*\*正文：\*\*\s*([\s\S]*?)(?=\*\*标签：\*\*)/);
-    const hashtagsMatch = aiResponse.match(/\*\*标签：\*\*\s*([^\n]+)/);
-    
-    const title = titleMatch ? titleMatch[1].trim() : "📚 辞海：知识的海洋，智慧的源泉";
-    const mainText = mainTextMatch ? mainTextMatch[1].trim() : "今天分享这本陪伴我多年的辞海！作为一部权威的综合性辞书，辞海不仅收录了丰富的词汇，更是中华文化的瑰宝。";
-    const hashtagsText = hashtagsMatch ? hashtagsMatch[1].trim() : "#辞海 #2025上海书展 #书香中国上海周 #辞海星空大章 #云端辞海·知识随行";
-    
-    // Extract hashtags from the text
-    const hashtags = hashtagsText.match(/#[^\s#]+/g) || ["#辞海", "#2025上海书展", "#书香中国上海周", "#辞海星空大章", "#云端辞海·知识随行"];
-    
-    return {
-      title,
-      mainText,
-      hashtags
-    };
   };
 
   const handleNextStep = () => {

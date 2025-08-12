@@ -18,13 +18,13 @@ let submissions = [];
 // API Routes
 app.post('/api/submit-post', (req, res) => {
   try {
-    const { postLink, name, email, generatedContent } = req.body;
+    const { postLink, generatedContent } = req.body;
     
     // Validate required fields
-    if (!postLink || !name || !email) {
+    if (!postLink) {
       return res.status(400).json({ 
         success: false, 
-        message: '请填写所有必填字段' 
+        message: '请填写帖子链接' 
       });
     }
 
@@ -32,8 +32,6 @@ app.post('/api/submit-post', (req, res) => {
     const submission = {
       id: Date.now().toString(),
       postLink,
-      name,
-      email,
       generatedContent,
       timestamp: new Date().toISOString(),
       status: 'pending'

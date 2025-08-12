@@ -30,16 +30,16 @@ exports.handler = async function(event, context) {
   }
 
   try {
-    const { postLink, name, email, generatedContent } = JSON.parse(event.body);
+    const { postLink, generatedContent } = JSON.parse(event.body);
     
     // Validate required fields
-    if (!postLink || !name || !email) {
+    if (!postLink) {
       return {
         statusCode: 400,
         headers,
         body: JSON.stringify({ 
           success: false, 
-          message: '请填写所有必填字段' 
+          message: '请填写帖子链接' 
         })
       };
     }
@@ -68,8 +68,6 @@ exports.handler = async function(event, context) {
     // Create submission object
     const submission = {
       postLink,
-      name,
-      email,
       generatedContent,
       timestamp: new Date().toISOString(),
       status: 'pending',
