@@ -18,19 +18,5 @@
       "src": "/(.*)",
       "dest": "/index.html"
     }
-  ],
-  "functions": {
-    "api/submit-post.js": {
-      "maxDuration": 10
-    },
-    "api/submissions.js": {
-      "maxDuration": 10
-    },
-    "api/submission.js": {
-      "maxDuration": 10
-    },
-    "api/update-status.js": {
-      "maxDuration": 10
-    }
-  }
+  ]
 }
