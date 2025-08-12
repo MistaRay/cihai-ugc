@@ -113,7 +113,8 @@ const PhotoUpload = () => {
 
   // Convert image file to compressed JPEG base64 (better for mobile; avoids HEIC issues)
   const convertImageToBase64 = (file) => {
-    const MAX_DIMENSION = 1600;
+    const MAX_DIMENSION_START = 1600;
+    const TARGET_MAX_BYTES = 850 * 1024; // ~850KB
     return new Promise((resolve) => {
       try {
         const img = new Image();
@@ -122,13 +123,24 @@ const PhotoUpload = () => {
           const canvas = document.createElement('canvas');
           const ctx = canvas.getContext('2d');
           const { width, height } = img;
-          const scale = Math.min(1, MAX_DIMENSION / Math.max(width, height));
-          const targetW = Math.max(1, Math.round(width * scale));
-          const targetH = Math.max(1, Math.round(height * scale));
-          canvas.width = targetW;
-          canvas.height = targetH;
-          ctx.drawImage(img, 0, 0, targetW, targetH);
-          const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+          let maxDim = MAX_DIMENSION_START;
+          let quality = 0.82;
+          let dataUrl = '';
+          for (let attempt = 0; attempt < 4; attempt += 1) {
+            const scale = Math.min(1, maxDim / Math.max(width, height));
+            const targetW = Math.max(1, Math.round(width * scale));
+            const targetH = Math.max(1, Math.round(height * scale));
+            canvas.width = targetW;
+            canvas.height = targetH;
+            ctx.clearRect(0, 0, targetW, targetH);
+            ctx.drawImage(img, 0, 0, targetW, targetH);
+            dataUrl = canvas.toDataURL('image/jpeg', quality);
+            const approxBytes = Math.floor((dataUrl.length - dataUrl.indexOf(',') - 1) * 0.75);
+            if (approxBytes <= TARGET_MAX_BYTES) break;
+            // tighten quality and dimensions
+            quality = Math.max(0.68, quality - 0.08);
+            maxDim = Math.max(900, Math.floor(maxDim * 0.85));
+          }
           URL.revokeObjectURL(objectUrl);
           resolve({ base64: dataUrl.split(',')[1], mimeType: 'image/jpeg' });
         };
