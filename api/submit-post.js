@@ -2,7 +2,7 @@
 import { MongoClient } from 'mongodb';
 
 const MONGODB_URI = process.env.MONGODB_URI;
-const MONGODB_DB = process.env.MONGODB_DB || 'cihai-ugc';
+const MONGODB_DB = process.env.MONGODB_DB;
 
 export default async function handler(req, res) {
   // Enable CORS
@@ -18,6 +18,14 @@ export default async function handler(req, res) {
     return res.status(405).json({ 
       success: false, 
       message: 'Method not allowed' 
+    });
+  }
+
+  // Check if environment variables are set
+  if (!MONGODB_URI || !MONGODB_DB) {
+    return res.status(500).json({
+      success: false,
+      message: 'Database configuration error'
     });
   }
 

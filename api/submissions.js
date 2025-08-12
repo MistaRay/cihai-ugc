@@ -1,8 +1,8 @@
-// Vercel serverless function for retrieving submissions (admin endpoint)
+// Vercel serverless function for retrieving all submissions
 import { MongoClient } from 'mongodb';
 
 const MONGODB_URI = process.env.MONGODB_URI;
-const MONGODB_DB = process.env.MONGODB_DB || 'cihai-ugc';
+const MONGODB_DB = process.env.MONGODB_DB;
 
 export default async function handler(req, res) {
   // Enable CORS
@@ -21,24 +21,30 @@ export default async function handler(req, res) {
     });
   }
 
+  // Check if environment variables are set
+  if (!MONGODB_URI || !MONGODB_DB) {
+    return res.status(500).json({
+      success: false,
+      message: 'Database configuration error'
+    });
+  }
+
   try {
-    // Connect to MongoDB
     const client = await MongoClient.connect(MONGODB_URI);
     const db = client.db(MONGODB_DB);
     const collection = db.collection('submissions');
 
-    // Get all submissions, sorted by newest first
+    // Get all submissions, sorted by timestamp (newest first)
     const submissions = await collection
       .find({})
       .sort({ timestamp: -1 })
       .toArray();
-    
+
     await client.close();
 
     res.json({
       success: true,
-      submissions: submissions,
-      count: submissions.length
+      submissions
     });
 
   } catch (error) {

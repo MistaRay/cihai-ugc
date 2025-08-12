@@ -1,8 +1,8 @@
-// Vercel serverless function for retrieving a specific submission by ID
+// Vercel serverless function for retrieving a single submission by ID
 import { MongoClient, ObjectId } from 'mongodb';
 
 const MONGODB_URI = process.env.MONGODB_URI;
-const MONGODB_DB = process.env.MONGODB_DB || 'cihai-ugc';
+const MONGODB_DB = process.env.MONGODB_DB;
 
 export default async function handler(req, res) {
   // Enable CORS
@@ -24,29 +24,34 @@ export default async function handler(req, res) {
   const { id } = req.query;
 
   if (!id) {
-    return res.status(400).json({
+    return res.status(400).json({ 
+      success: false, 
+      message: 'Submission ID is required' 
+    });
+  }
+
+  // Check if environment variables are set
+  if (!MONGODB_URI || !MONGODB_DB) {
+    return res.status(500).json({
       success: false,
-      message: 'Submission ID is required'
+      message: 'Database configuration error'
     });
   }
 
   try {
-    // Connect to MongoDB
     const client = await MongoClient.connect(MONGODB_URI);
     const db = client.db(MONGODB_DB);
     const collection = db.collection('submissions');
 
     // Find submission by ID
-    const submission = await collection.findOne({ 
-      _id: new ObjectId(id) 
-    });
-    
+    const submission = await collection.findOne({ _id: new ObjectId(id) });
+
     await client.close();
 
     if (!submission) {
       return res.status(404).json({
         success: false,
-        message: '提交记录未找到'
+        message: 'Submission not found'
       });
     }
 

@@ -2,7 +2,7 @@
 import { MongoClient, ObjectId } from 'mongodb';
 
 const MONGODB_URI = process.env.MONGODB_URI;
-const MONGODB_DB = process.env.MONGODB_DB || 'cihai-ugc';
+const MONGODB_DB = process.env.MONGODB_DB;
 
 export default async function handler(req, res) {
   // Enable CORS
@@ -25,23 +25,30 @@ export default async function handler(req, res) {
   const { status } = req.body;
 
   if (!id || !status) {
-    return res.status(400).json({
-      success: false,
-      message: 'Submission ID and status are required'
+    return res.status(400).json({ 
+      success: false, 
+      message: 'Submission ID and status are required' 
     });
   }
 
-  // Validate status values
-  const validStatuses = ['pending', 'approved', 'rejected', 'processing'];
+  // Validate status
+  const validStatuses = ['pending', 'approved', 'rejected'];
   if (!validStatuses.includes(status)) {
-    return res.status(400).json({
+    return res.status(400).json({ 
+      success: false, 
+      message: 'Invalid status. Must be one of: pending, approved, rejected' 
+    });
+  }
+
+  // Check if environment variables are set
+  if (!MONGODB_URI || !MONGODB_DB) {
+    return res.status(500).json({
       success: false,
-      message: 'Invalid status value'
+      message: 'Database configuration error'
     });
   }
 
   try {
-    // Connect to MongoDB
     const client = await MongoClient.connect(MONGODB_URI);
     const db = client.db(MONGODB_DB);
     const collection = db.collection('submissions');
@@ -51,25 +58,24 @@ export default async function handler(req, res) {
       { _id: new ObjectId(id) },
       { 
         $set: { 
-          status: status,
+          status,
           updatedAt: new Date().toISOString()
         } 
       }
     );
-    
+
     await client.close();
 
     if (result.matchedCount === 0) {
       return res.status(404).json({
         success: false,
-        message: '提交记录未找到'
+        message: 'Submission not found'
       });
     }
 
     res.json({
       success: true,
-      message: '状态更新成功',
-      updatedCount: result.modifiedCount
+      message: 'Status updated successfully'
     });
 
   } catch (error) {
