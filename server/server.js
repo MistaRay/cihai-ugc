@@ -117,7 +117,7 @@ app.post('/api/generate-content', async (req, res) => {
     }
 
     // DeepSeek API configuration
-    const apiKey = process.env.DEEPSEEK_API_KEY;
+    const apiKey = process.env.REACT_APP_DEEPSEEK_API_KEY;
     if (!apiKey) {
       return res.status(500).json({ 
         success: false, 

@@ -42,7 +42,7 @@ exports.handler = async function(event, context) {
     }
 
     // DeepSeek API configuration
-    const apiKey = process.env.DEEPSEEK_API_KEY;
+    const apiKey = process.env.REACT_APP_DEEPSEEK_API_KEY;
     if (!apiKey) {
       return {
         statusCode: 500,
