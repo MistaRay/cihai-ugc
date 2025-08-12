@@ -81,14 +81,20 @@ const PhotoUpload = () => {
     
     try {
       setError(null);
-      // Convert image to base64 for serverless function
-      const base64Image = await convertImageToBase64(selectedFile);
+      // Compress image and convert to base64 for serverless function
+      const compressed = await compressImageToJpeg(selectedFile, 1280, 1280, 0.72);
+      const base64Image = await convertBlobToBase64(compressed);
       // Call our Netlify function (server-side key, CORS-safe)
       const content = await callDeepSeekAPI(base64Image);
       setGeneratedContent(content);
     } catch (error) {
       console.error('Error generating content:', error);
-      setError('AI内容生成失败，请重试或联系客服。');
+      // Provide more specific timeout messaging
+      if (String(error?.message || '').includes('504') || String(error?.message || '').includes('超时')) {
+        setError('生成超时，请稍后重试。');
+      } else {
+        setError('AI内容生成失败，请重试或联系客服。');
+      }
       // Fallback to default content if API fails
       const fallbackContent = {
         title: "📚 辞海：知识的海洋，智慧的源泉",
@@ -111,27 +117,86 @@ const PhotoUpload = () => {
     }
   };
 
-  // Convert image file to base64
-  const convertImageToBase64 = (file) => {
+  // Compress image to JPEG using canvas
+  const compressImageToJpeg = (file, maxWidth = 1280, maxHeight = 1280, quality = 0.72) => {
+    return new Promise((resolve, reject) => {
+      try {
+        const img = new Image();
+        const url = URL.createObjectURL(file);
+        img.onload = () => {
+          let { width, height } = img;
+          const ratio = Math.min(maxWidth / width, maxHeight / height, 1);
+          const targetWidth = Math.round(width * ratio);
+          const targetHeight = Math.round(height * ratio);
+          const canvas = document.createElement('canvas');
+          canvas.width = targetWidth;
+          canvas.height = targetHeight;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
+          canvas.toBlob(
+            (blob) => {
+              URL.revokeObjectURL(url);
+              if (!blob) {
+                reject(new Error('图像压缩失败'));
+                return;
+              }
+              // If still large, try a second-pass lower quality
+              if (blob.size > 1500 * 1024 && quality > 0.5) {
+                canvas.toBlob(
+                  (blob2) => {
+                    if (!blob2) {
+                      resolve(blob);
+                    } else {
+                      resolve(blob2);
+                    }
+                  },
+                  'image/jpeg',
+                  Math.max(0.5, quality - 0.2)
+                );
+              } else {
+                resolve(blob);
+              }
+            },
+            'image/jpeg',
+            quality
+          );
+        };
+        img.onerror = (e) => {
+          URL.revokeObjectURL(url);
+          reject(e);
+        };
+        img.src = url;
+      } catch (e) {
+        reject(e);
+      }
+    });
+  };
+
+  // Convert Blob to base64 (strip data URL prefix)
+  const convertBlobToBase64 = (blob) => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => {
-        const base64 = reader.result.split(',')[1]; // Remove data:image/...;base64, prefix
+        const result = reader.result || '';
+        const base64 = String(result).split(',')[1] || '';
         resolve(base64);
       };
       reader.onerror = reject;
-      reader.readAsDataURL(file);
+      reader.readAsDataURL(blob);
     });
   };
 
   // Call our Netlify function for content generation
   const callDeepSeekAPI = async (base64Image) => {
     try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 16000);
       const response = await fetch('/.netlify/functions/generate-content', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: base64Image })
-      });
+        body: JSON.stringify({ image: base64Image }),
+        signal: controller.signal
+      }).finally(() => clearTimeout(timer));
 
       if (!response.ok) {
         const errorText = await response.text();

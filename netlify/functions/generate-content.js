@@ -1,4 +1,4 @@
-// Netlify function for AI content generation using DeepSeek API
+// Netlify function for AI content generation using DeepSeek API (multimodal)
 exports.handler = async function(event, context) {
   // Enable CORS
   const headers = {
@@ -29,8 +29,6 @@ exports.handler = async function(event, context) {
 
   try {
     const { image } = JSON.parse(event.body || '{}');
-    
-    // Image is optional; we currently use text-only chat schema.
 
     // DeepSeek API configuration
     const apiKey = process.env.DEEPSEEK_API_KEY || process.env.REACT_APP_DEEPSEEK_API_KEY;
@@ -45,45 +43,53 @@ exports.handler = async function(event, context) {
       };
     }
     const apiUrl = 'https://api.deepseek.com/v1/chat/completions';
-    
-    const prompt = `你是一个专业的小红书内容创作AI助手。请根据用户提供的图片，生成高质量的小红书风格内容。
 
-请严格按照以下格式输出，不要添加任何其他内容：
+    const prompt = `你是一个专业的小红书内容创作AI助手。请严格基于用户上传的图片进行描述与创作，聚焦书籍相关要素（如封面文字、作者、出版社、装帧、拍摄场景、材质与光线、使用情境等），避免空泛描述。请使用自然中文口吻。
+
+输出格式（只输出以下三部分，不要增加额外字符）：
 
 **标题：**
 [吸引人的标题，不超过30字]
 
 **正文：**
-[200-300字正文内容，小红书风格，积极正面，包含实用建议或感悟]
+[180-260字正文内容，小红书风格，积极正面，包含对图片中真实元素的描述与感受，可给出1-2条使用建议]
 
 **标签：**
-[3-5个相关标签，用#分隔] （#标签1 #标签2 #标签3）
+[3-5个相关标签，用#分隔] （#辞海 #2025上海书展 #书香中国上海周 #辞海星空大章 #云端辞海·知识随行）
 
-重要规则：
-1. 直接生成内容，不要询问用户更多信息
-2. 不要添加任何介绍性文字或问候语
-3. 不要解释你的工作流程
-4. 只输出标题、正文、标签三个部分
-5. 基于用户提供的图片内容进行创作
-6. 内容要积极正面，符合小红书平台调性
-7. 标题要简洁有力，吸引人
-8. 正文要自然流畅，有感染力
-9. 标签要用 #辞海 #2025上海书展 #书香中国上海周 #辞海星空大章 #云端辞海·知识随行
-10. 根据照片生成文案，不是瞎编
+要求：
+1. 所有描述必须可由图片推断或佐证，不要编造看不见的信息。
+2. 尽量点名图片中能读清的文字（如书名/作者/版次）或显著特征（颜色、装帧、边角磨损、拍摄环境）。
+3. 不要出现“我无法看到图片”等表述。`;
 
-请分析这张图片并生成相应的小红书内容。`;
+    // Build OpenAI-compatible multimodal message if image is provided
+    const userContent = image
+      ? [
+          { type: 'text', text: prompt },
+          { type: 'image_url', image_url: `data:image/jpeg;base64,${image}` }
+        ]
+      : [{ type: 'text', text: `${prompt}\n（未提供图片时，围绕辞海或书籍主题写一段通用文案。）` }];
 
     const requestBody = {
-      model: "deepseek-chat",
+      // Multimodal model; falls back to text if无图
+      model: 'deepseek-multimodal',
       messages: [
         {
-          role: "user",
-          content: prompt
+          role: 'system',
+          content: '你是图文理解与内容生成助手，要求内容真实、具体、贴合图片细节。'
+        },
+        {
+          role: 'user',
+          content: userContent
         }
       ],
-      max_tokens: 1000,
-      temperature: 0.7
+      max_tokens: 520,
+      temperature: 0.6
     };
+
+    // Add a request timeout to avoid very slow generations causing UI errors
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 14000); // 14s budget within Netlify limits
 
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -91,8 +97,9 @@ exports.handler = async function(event, context) {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(requestBody)
-    });
+      body: JSON.stringify(requestBody),
+      signal: controller.signal
+    }).finally(() => clearTimeout(timeoutId));
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -101,7 +108,7 @@ exports.handler = async function(event, context) {
     }
 
     const data = await response.json();
-    
+
     // Parse the AI response to extract title, mainText, and hashtags
     const aiResponse = data.choices?.[0]?.message?.content || '';
     
@@ -136,12 +143,13 @@ exports.handler = async function(event, context) {
 
   } catch (error) {
     console.error('Error generating AI content:', error);
+    const isTimeout = error?.name === 'AbortError';
     return {
-      statusCode: 500,
+      statusCode: isTimeout ? 504 : 500,
       headers,
       body: JSON.stringify({
         success: false,
-        message: 'AI内容生成失败，请稍后重试',
+        message: isTimeout ? '生成超时，请稍后重试' : 'AI内容生成失败，请稍后重试',
         error: error.message
       })
     };
