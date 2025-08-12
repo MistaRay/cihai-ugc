@@ -115,7 +115,7 @@ app.post('/api/generate-content', async (req, res) => {
     }
 
     // DeepSeek API configuration
-    const apiKey = process.env.REACT_APP_DEEPSEEK_API_KEY;
+    const apiKey = process.env.DEEPSEEK_API_KEY || process.env.REACT_APP_DEEPSEEK_API_KEY;
     if (!apiKey) {
       return res.status(500).json({ 
         success: false, 
@@ -152,22 +152,11 @@ app.post('/api/generate-content', async (req, res) => {
 请分析这张图片并生成相应的小红书内容。`;
 
     const requestBody = {
-      model: "deepseek-vision",
+      model: "deepseek-chat",
       messages: [
         {
           role: "user",
-          content: [
-            {
-              type: "text",
-              text: prompt
-            },
-            {
-              type: "image_url",
-              image_url: {
-                url: `data:image/jpeg;base64,${image}`
-              }
-            }
-          ]
+          content: prompt
         }
       ],
       max_tokens: 1000,

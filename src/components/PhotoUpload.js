@@ -58,10 +58,9 @@ const PhotoUpload = () => {
     
     try {
       setError(null);
-      // Convert image to base64 for API
+      // Convert image to base64 for serverless function
       const base64Image = await convertImageToBase64(selectedFile);
-      
-      // Call DeepSeek API for content generation
+      // Call our Netlify function (server-side key, CORS-safe)
       const content = await callDeepSeekAPI(base64Image);
       setGeneratedContent(content);
     } catch (error) {
@@ -102,171 +101,28 @@ const PhotoUpload = () => {
     });
   };
 
-  // Call DeepSeek API for content generation
+  // Call our Netlify function for content generation
   const callDeepSeekAPI = async (base64Image) => {
-    const apiKey = process.env.REACT_APP_DEEPSEEK_API_KEY;
-    if (!apiKey) {
-      throw new Error('DeepSeek API key not configured');
-    }
-    const apiUrl = 'https://api.deepseek.com/v1/chat/completions';
-    
-    const prompt = `你是一个专业的小红书内容创作AI助手。请根据用户提供的图片，生成高质量的小红书风格内容。
-
-请严格按照以下格式输出，不要添加任何其他内容：
-
-**标题：**
-[吸引人的标题，不超过30字]
-
-**正文：**
-[200-300字正文内容，小红书风格，积极正面，包含实用建议或感悟]
-
-**标签：**
-[3-5个相关标签，用#分隔] （#标签1 #标签2 #标签3）
-
-重要规则：
-1. 直接生成内容，不要询问用户更多信息
-2. 不要添加任何介绍性文字或问候语
-3. 不要解释你的工作流程
-4. 只输出标题、正文、标签三个部分
-5. 基于用户提供的图片内容进行创作
-6. 内容要积极正面，符合小红书平台调性
-7. 标题要简洁有力，吸引人
-8. 正文要自然流畅，有感染力
-9. 标签要用 #辞海 #2025上海书展 #书香中国上海周 #辞海星空大章 #云端辞海·知识随行
-10. 根据照片生成文案，不是瞎编
-
-请分析这张图片并生成相应的小红书内容。`;
-
-    // Clean and validate base64 data
-    const cleanBase64 = base64Image.replace(/[^A-Za-z0-9+/=]/g, '');
-    
-    // Check if base64 is valid and not too long
-    if (cleanBase64.length > 20000000) { // 20MB limit
-      throw new Error('Image file is too large. Please use a smaller image.');
-    }
-    
-    // Ensure base64 is properly padded
-    while (cleanBase64.length % 4 !== 0) {
-      cleanBase64 += '=';
-    }
-    
-    console.log('Base64 length:', cleanBase64.length);
-    console.log('Base64 preview:', cleanBase64.substring(0, 100) + '...');
-
-    const requestBody = {
-      model: "deepseek-vision",
-      messages: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: prompt
-            },
-            {
-              type: "image_url",
-              image_url: `data:image/jpeg;base64,${cleanBase64}`
-            }
-          ]
-        }
-      ],
-      max_tokens: 1000,
-      temperature: 0.7
-    };
-    
-    // Alternative simpler format if the above doesn't work
-    const alternativeRequestBody = {
-      model: "deepseek-vision",
-      messages: [
-        {
-          role: "user",
-          content: prompt + "\n\n[Image attached]"
-        }
-      ],
-      max_tokens: 1000,
-      temperature: 0.7
-    };
-
     try {
-      console.log('Request body:', JSON.stringify(requestBody, null, 2));
-      
-      const response = await fetch(apiUrl, {
+      const response = await fetch('/.netlify/functions/generate-content', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(requestBody)
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: base64Image })
       });
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('DeepSeek API error response:', errorText);
-        
-        // Try alternative format if first attempt fails
-        console.log('Trying alternative request format...');
-        const altResponse = await fetch(apiUrl, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(alternativeRequestBody)
-        });
-        
-        if (!altResponse.ok) {
-          const altErrorText = await altResponse.text();
-          console.error('Alternative format also failed:', altErrorText);
-          throw new Error(`API request failed: ${response.status} ${response.statusText} - ${errorText}`);
-        }
-        
-        // Use alternative response
-        const altData = await altResponse.json();
-        const aiResponse = altData.choices[0].message.content;
-        
-        // Parse the AI response to extract title, mainText, and hashtags
-        const titleMatch = aiResponse.match(/\*\*标题：\*\*\s*([^\n]+)/);
-        const mainTextMatch = aiResponse.match(/\*\*正文：\*\*\s*([\s\S]*?)(?=\*\*标签：\*\*)/);
-        const hashtagsMatch = aiResponse.match(/\*\*标签：\*\*\s*([^\n]+)/);
-        
-        const title = titleMatch ? titleMatch[1].trim() : "📚 辞海：知识的海洋，智慧的源泉";
-        const mainText = mainTextMatch ? mainTextMatch[1].trim() : "今天分享这本陪伴我多年的辞海！作为一部权威的综合性辞书，辞海不仅收录了丰富的词汇，更是中华文化的瑰宝。";
-        const hashtagsText = hashtagsMatch ? hashtagsMatch[1].trim() : "#辞海 #2025上海书展 #书香中国上海周 #辞海星空大章 #云端辞海·知识随行";
-        
-        // Extract hashtags from the text
-        const hashtags = hashtagsText.match(/#[^\s#]+/g) || ["#辞海", "#2025上海书展", "#书香中国上海周", "#辞海星空大章", "#云端辞海·知识随行"];
-        
-        return {
-          title,
-          mainText,
-          hashtags
-        };
+        console.error('Function error response:', errorText);
+        throw new Error(`Function request failed: ${response.status} ${response.statusText} - ${errorText}`);
       }
 
       const data = await response.json();
-      
-      // Parse the AI response to extract title, mainText, and hashtags
-      const aiResponse = data.choices[0].message.content;
-      
-      // Extract content using regex patterns
-      const titleMatch = aiResponse.match(/\*\*标题：\*\*\s*([^\n]+)/);
-      const mainTextMatch = aiResponse.match(/\*\*正文：\*\*\s*([\s\S]*?)(?=\*\*标签：\*\*)/);
-      const hashtagsMatch = aiResponse.match(/\*\*标签：\*\*\s*([^\n]+)/);
-      
-      const title = titleMatch ? titleMatch[1].trim() : "📚 辞海：知识的海洋，智慧的源泉";
-      const mainText = mainTextMatch ? mainTextMatch[1].trim() : "今天分享这本陪伴我多年的辞海！作为一部权威的综合性辞书，辞海不仅收录了丰富的词汇，更是中华文化的瑰宝。";
-      const hashtagsText = hashtagsMatch ? hashtagsMatch[1].trim() : "#辞海 #2025上海书展 #书香中国上海周 #辞海星空大章 #云端辞海·知识随行";
-      
-      // Extract hashtags from the text
-      const hashtags = hashtagsText.match(/#[^\s#]+/g) || ["#辞海", "#2025上海书展", "#书香中国上海周", "#辞海星空大章", "#云端辞海·知识随行"];
-      
-      return {
-        title,
-        mainText,
-        hashtags
-      };
+      if (!data.success) {
+        throw new Error(data.message || 'Function returned an error');
+      }
+      return data.content;
     } catch (error) {
-      console.error('DeepSeek API call error:', error);
+      console.error('Function call error:', error);
       throw error;
     }
   };

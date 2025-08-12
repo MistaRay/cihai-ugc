@@ -28,21 +28,12 @@ exports.handler = async function(event, context) {
   }
 
   try {
-    const { image } = JSON.parse(event.body);
+    const { image } = JSON.parse(event.body || '{}');
     
-    if (!image) {
-      return {
-        statusCode: 400,
-        headers,
-        body: JSON.stringify({ 
-          success: false, 
-          message: '请提供图片数据' 
-        })
-      };
-    }
+    // Image is optional; we currently use text-only chat schema.
 
     // DeepSeek API configuration
-    const apiKey = process.env.REACT_APP_DEEPSEEK_API_KEY;
+    const apiKey = process.env.DEEPSEEK_API_KEY || process.env.REACT_APP_DEEPSEEK_API_KEY;
     if (!apiKey) {
       return {
         statusCode: 500,
@@ -83,22 +74,11 @@ exports.handler = async function(event, context) {
 请分析这张图片并生成相应的小红书内容。`;
 
     const requestBody = {
-      model: "deepseek-vision",
+      model: "deepseek-chat",
       messages: [
         {
           role: "user",
-          content: [
-            {
-              type: "text",
-              text: prompt
-            },
-            {
-              type: "image_url",
-              image_url: {
-                url: `data:image/jpeg;base64,${image}`
-              }
-            }
-          ]
+          content: prompt
         }
       ],
       max_tokens: 1000,
@@ -123,7 +103,7 @@ exports.handler = async function(event, context) {
     const data = await response.json();
     
     // Parse the AI response to extract title, mainText, and hashtags
-    const aiResponse = data.choices[0].message.content;
+    const aiResponse = data.choices?.[0]?.message?.content || '';
     
     // Extract content using regex patterns
     const titleMatch = aiResponse.match(/\*\*标题：\*\*\s*([^\n]+)/);
