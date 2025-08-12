@@ -69,45 +69,47 @@ exports.handler = async function(event, context) {
       const stepBase = process.env.STEPFUN_API_BASE || 'https://api.stepfun.com/v1';
       const primaryUrl = `${stepBase.replace(/\/$/, '')}/chat/completions`;
       const stepModel = process.env.STEPFUN_VISION_MODEL || 'step-1v-32k';
-      const stepBody = {
-        model: stepModel,
-        messages: [
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: prompt },
-              // Some providers expect string for image_url instead of object
-              { type: 'image_url', image_url: imageDataUrl }
-            ]
-          }
-        ],
-        max_tokens: 1000,
-        temperature: 0.7
+
+      const buildBodies = () => {
+        const common = { model: stepModel, max_tokens: 1000, temperature: 0.7 };
+        return [
+          { ...common, messages: [ { role: 'user', content: [ { type: 'text', text: prompt }, { type: 'image_url', image_url: { url: imageDataUrl } } ] } ] },
+          { ...common, messages: [ { role: 'user', content: [ { type: 'text', text: prompt }, { type: 'image_url', image_url: imageDataUrl } ] } ] },
+          { ...common, messages: [ { role: 'user', content: [ { type: 'text', text: prompt }, { type: 'image', image_url: imageDataUrl } ] } ] },
+          { ...common, messages: [ { role: 'user', content: prompt } ], images: [ { type: 'image_url', image_url: imageDataUrl } ] }
+        ];
       };
 
-      const doCall = async (url) => fetch(url, {
+      const doCall = async (url, body) => fetch(url, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${stepfunKey}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(stepBody)
+        body: JSON.stringify(body)
       });
 
-      let stepResp = await doCall(primaryUrl);
-      if (stepResp.status === 404) {
-        // Fallback URL without explicit version segment
-        const fallbackUrl = primaryUrl.replace('/v1', '');
-        stepResp = await doCall(fallbackUrl);
+      let lastErrText = '';
+      let stepData = null;
+      for (const body of buildBodies()) {
+        let stepResp = await doCall(primaryUrl, body);
+        if (stepResp.status === 404) {
+          const fallbackUrl = primaryUrl.replace('/v1', '');
+          stepResp = await doCall(fallbackUrl, body);
+        }
+        if (stepResp.ok) {
+          stepData = await stepResp.json();
+          break;
+        }
+        lastErrText = await stepResp.text();
+        if (!(stepResp.status === 400 || stepResp.status === 422)) {
+          console.error('StepFun API error:', stepResp.status, lastErrText);
+          throw new Error(`StepFun API request failed: ${stepResp.status} ${stepResp.statusText} - ${lastErrText}`);
+        }
       }
-
-      if (!stepResp.ok) {
-        const errText = await stepResp.text();
-        console.error('StepFun API error:', stepResp.status, errText);
-        throw new Error(`StepFun API request failed: ${stepResp.status} ${stepResp.statusText} - ${errText}`);
+      if (!stepData) {
+        throw new Error(`StepFun API request failed: could not find accepted message schema - ${lastErrText}`);
       }
-
-      const stepData = await stepResp.json();
       const aiMessage = stepData.choices?.[0]?.message;
       const aiResponse = Array.isArray(aiMessage?.content)
         ? aiMessage.content.map(part => (typeof part === 'string' ? part : part.text || '')).join('\n')
