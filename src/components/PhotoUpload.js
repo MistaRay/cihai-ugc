@@ -81,10 +81,10 @@ const PhotoUpload = () => {
     
     try {
       setError(null);
-      // Convert image to base64 for serverless function
-      const base64Image = await convertImageToBase64(selectedFile);
+      // Convert and compress image to base64 for serverless function
+      const { base64: base64Image, mimeType } = await convertImageToBase64(selectedFile);
       // Call our Netlify function (server-side key, CORS-safe)
-      const content = await callDeepSeekAPI(base64Image, selectedFile.type);
+      const content = await callDeepSeekAPI(base64Image, mimeType);
       setGeneratedContent(content);
     } catch (error) {
       console.error('Error generating content:', error);
@@ -111,16 +111,54 @@ const PhotoUpload = () => {
     }
   };
 
-  // Convert image file to base64
+  // Convert image file to compressed JPEG base64 (better for mobile; avoids HEIC issues)
   const convertImageToBase64 = (file) => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const base64 = reader.result.split(',')[1]; // Remove data:image/...;base64, prefix
-        resolve(base64);
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
+    const MAX_DIMENSION = 1600;
+    return new Promise((resolve) => {
+      try {
+        const img = new Image();
+        const objectUrl = URL.createObjectURL(file);
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          const { width, height } = img;
+          const scale = Math.min(1, MAX_DIMENSION / Math.max(width, height));
+          const targetW = Math.max(1, Math.round(width * scale));
+          const targetH = Math.max(1, Math.round(height * scale));
+          canvas.width = targetW;
+          canvas.height = targetH;
+          ctx.drawImage(img, 0, 0, targetW, targetH);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+          URL.revokeObjectURL(objectUrl);
+          resolve({ base64: dataUrl.split(',')[1], mimeType: 'image/jpeg' });
+        };
+        img.onerror = () => {
+          // Fallback: read original file as base64
+          URL.revokeObjectURL(objectUrl);
+          const reader = new FileReader();
+          reader.onload = () => {
+            const dataUrl = reader.result;
+            const base64 = dataUrl.split(',')[1];
+            const detectedMime = (dataUrl.match(/^data:(.*?);base64,/) || [null, file.type || 'image/jpeg'])[1];
+            resolve({ base64, mimeType: detectedMime || 'image/jpeg' });
+          };
+          reader.onerror = () => {
+            resolve({ base64: '', mimeType: 'image/jpeg' });
+          };
+          reader.readAsDataURL(file);
+        };
+        img.src = objectUrl;
+      } catch {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const dataUrl = reader.result;
+          const base64 = dataUrl.split(',')[1];
+          const detectedMime = (dataUrl.match(/^data:(.*?);base64,/) || [null, file.type || 'image/jpeg'])[1];
+          resolve({ base64, mimeType: detectedMime || 'image/jpeg' });
+        };
+        reader.onerror = () => resolve({ base64: '', mimeType: 'image/jpeg' });
+        reader.readAsDataURL(file);
+      }
     });
   };
 
