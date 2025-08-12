@@ -18,6 +18,16 @@
 .env.test.local
 .env.production.local
 
+# Environment variables and secrets
+.env
+.env.local
+.env.*.local
+.env.production
+.env.staging
+
+# MongoDB connection strings
+*.env
+
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
