@@ -10,7 +10,7 @@ function App() {
     <Router>
       <div className="App">
         <header className="App-header">
-          <h1>📚 AI 辞海助手</h1>
+          <h1>📚 AI 辞海文案助手</h1>
           <p>上传辞海照片，获取AI生成的小红书内容</p>
         </header>
         

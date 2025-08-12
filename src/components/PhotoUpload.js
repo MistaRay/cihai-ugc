@@ -231,7 +231,7 @@ const PhotoUpload = () => {
               生成的内容
             </h2>
             <button
-              className="copy-btn"
+              className={`copy-btn ${copied ? 'copied' : ''}`}
               onClick={handleCopy}
               style={{ display: 'flex', alignItems: 'center', gap: 6 }}
             >
