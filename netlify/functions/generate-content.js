@@ -43,6 +43,18 @@ exports.handler = async function(event, context) {
         return [];
       }
     };
+    // Ensure we always return within Netlify function timeout limits
+    const TIMEOUT_MS = Number(process.env.AI_HTTP_TIMEOUT_MS || 9000);
+    const fetchWithTimeout = async (url, options) => {
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), TIMEOUT_MS);
+      try {
+        const resp = await fetch(url, { ...(options || {}), signal: controller.signal });
+        return resp;
+      } finally {
+        clearTimeout(id);
+      }
+    };
 
     const withBaseTags = (aiTags) => {
       const combined = [];
@@ -91,19 +103,17 @@ exports.handler = async function(event, context) {
     if (stepfunKey && imageDataUrl) {
       const stepBase = process.env.STEPFUN_API_BASE || 'https://api.stepfun.com/v1';
       const primaryUrl = `${stepBase.replace(/\/$/, '')}/chat/completions`;
-      const stepModel = process.env.STEPFUN_VISION_MODEL || 'step-1v-32k';
+      const stepModel = process.env.STEPFUN_VISION_MODEL || 'step-1v';
 
       const buildBodies = () => {
-        const common = { model: stepModel, max_tokens: 1000, temperature: 0.7 };
+        const common = { model: stepModel, max_tokens: 600, temperature: 0.7 };
         return [
           { ...common, messages: [ { role: 'user', content: [ { type: 'text', text: prompt }, { type: 'image_url', image_url: { url: imageDataUrl } } ] } ] },
-          { ...common, messages: [ { role: 'user', content: [ { type: 'text', text: prompt }, { type: 'image_url', image_url: imageDataUrl } ] } ] },
-          { ...common, messages: [ { role: 'user', content: [ { type: 'text', text: prompt }, { type: 'image', image_url: imageDataUrl } ] } ] },
-          { ...common, messages: [ { role: 'user', content: prompt } ], images: [ { type: 'image_url', image_url: imageDataUrl } ] }
+          { ...common, messages: [ { role: 'user', content: [ { type: 'text', text: prompt }, { type: 'image_url', image_url: imageDataUrl } ] } ] }
         ];
       };
 
-      const doCall = async (url, body) => fetch(url, {
+      const doCall = async (url, body) => fetchWithTimeout(url, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${stepfunKey}`,
@@ -167,7 +177,7 @@ exports.handler = async function(event, context) {
         temperature: 0.7
       };
 
-      const stepResp = await fetch(stepUrl, {
+      const stepResp = await fetchWithTimeout(stepUrl, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${stepfunKey}`,
@@ -217,7 +227,7 @@ exports.handler = async function(event, context) {
         temperature: 0.7
       };
 
-      const oaResp = await fetch(oaUrl, {
+      const oaResp = await fetchWithTimeout(oaUrl, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${openaiKey}`,
