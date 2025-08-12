@@ -84,7 +84,7 @@ const PhotoUpload = () => {
       // Convert image to base64 for serverless function
       const base64Image = await convertImageToBase64(selectedFile);
       // Call our Netlify function (server-side key, CORS-safe)
-      const content = await callDeepSeekAPI(base64Image);
+      const content = await callDeepSeekAPI(base64Image, selectedFile.type);
       setGeneratedContent(content);
     } catch (error) {
       console.error('Error generating content:', error);
@@ -125,12 +125,12 @@ const PhotoUpload = () => {
   };
 
   // Call our Netlify function for content generation
-  const callDeepSeekAPI = async (base64Image) => {
+  const callDeepSeekAPI = async (base64Image, mimeType) => {
     try {
       const response = await fetch('/.netlify/functions/generate-content', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: base64Image })
+        body: JSON.stringify({ image: base64Image, mimeType })
       });
 
       if (!response.ok) {

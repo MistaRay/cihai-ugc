@@ -28,9 +28,10 @@ exports.handler = async function(event, context) {
   }
 
   try {
-    const { image } = JSON.parse(event.body || '{}');
+    const { image, mimeType } = JSON.parse(event.body || '{}');
     
-    // Image is optional; we currently use text-only chat schema.
+    // Build optional image message part if provided
+    const imageDataUrl = image && mimeType ? `data:${mimeType};base64,${image}` : null;
 
     // DeepSeek API configuration
     const apiKey = process.env.DEEPSEEK_API_KEY || process.env.REACT_APP_DEEPSEEK_API_KEY;
@@ -73,12 +74,21 @@ exports.handler = async function(event, context) {
 
 请分析这张图片并生成相应的小红书内容。`;
 
+    // Prefer multimodal if the API supports it. We'll include an image_url part when available; otherwise
+    // the backend will still receive the text prompt and produce a reasonable result.
+    const userContent = imageDataUrl
+      ? [
+          { type: "text", text: prompt },
+          { type: "image_url", image_url: imageDataUrl }
+        ]
+      : [{ type: "text", text: prompt }];
+
     const requestBody = {
       model: "deepseek-chat",
       messages: [
         {
           role: "user",
-          content: prompt
+          content: userContent
         }
       ],
       max_tokens: 1000,
@@ -103,7 +113,11 @@ exports.handler = async function(event, context) {
     const data = await response.json();
     
     // Parse the AI response to extract title, mainText, and hashtags
-    const aiResponse = data.choices?.[0]?.message?.content || '';
+    const aiMessage = data.choices?.[0]?.message;
+    // Some providers return structured content parts; ensure we coerce to string
+    const aiResponse = Array.isArray(aiMessage?.content)
+      ? aiMessage.content.map(part => (typeof part === 'string' ? part : part.text || '')).join('\n')
+      : (aiMessage?.content || '');
     
     // Extract content using regex patterns
     const titleMatch = aiResponse.match(/\*\*标题：\*\*\s*([^\n]+)/);
