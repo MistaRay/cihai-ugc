@@ -113,8 +113,8 @@ const PhotoUpload = () => {
 
   // Convert image file to compressed JPEG base64 (better for mobile; avoids HEIC issues)
   const convertImageToBase64 = (file) => {
-    const MAX_DIMENSION_START = 1600;
-    const TARGET_MAX_BYTES = 850 * 1024; // ~850KB
+    const MAX_DIMENSION_START = 1400;
+    const TARGET_MAX_BYTES = 450 * 1024; // ~450KB
     return new Promise((resolve) => {
       try {
         const img = new Image();
@@ -124,9 +124,9 @@ const PhotoUpload = () => {
           const ctx = canvas.getContext('2d');
           const { width, height } = img;
           let maxDim = MAX_DIMENSION_START;
-          let quality = 0.82;
+          let quality = 0.78;
           let dataUrl = '';
-          for (let attempt = 0; attempt < 4; attempt += 1) {
+          for (let attempt = 0; attempt < 6; attempt += 1) {
             const scale = Math.min(1, maxDim / Math.max(width, height));
             const targetW = Math.max(1, Math.round(width * scale));
             const targetH = Math.max(1, Math.round(height * scale));
@@ -138,8 +138,19 @@ const PhotoUpload = () => {
             const approxBytes = Math.floor((dataUrl.length - dataUrl.indexOf(',') - 1) * 0.75);
             if (approxBytes <= TARGET_MAX_BYTES) break;
             // tighten quality and dimensions
-            quality = Math.max(0.68, quality - 0.08);
-            maxDim = Math.max(900, Math.floor(maxDim * 0.85));
+            quality = Math.max(0.56, quality - 0.08);
+            maxDim = Math.max(700, Math.floor(maxDim * 0.82));
+          }
+          // Final emergency clamp if still too large
+          if (!dataUrl || Math.floor((dataUrl.length - dataUrl.indexOf(',') - 1) * 0.75) > TARGET_MAX_BYTES) {
+            const scale = Math.min(1, 640 / Math.max(width, height));
+            const targetW = Math.max(1, Math.round(width * scale));
+            const targetH = Math.max(1, Math.round(height * scale));
+            canvas.width = targetW;
+            canvas.height = targetH;
+            ctx.clearRect(0, 0, targetW, targetH);
+            ctx.drawImage(img, 0, 0, targetW, targetH);
+            dataUrl = canvas.toDataURL('image/jpeg', 0.5);
           }
           URL.revokeObjectURL(objectUrl);
           resolve({ base64: dataUrl.split(',')[1], mimeType: 'image/jpeg' });

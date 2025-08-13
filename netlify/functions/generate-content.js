@@ -191,25 +191,25 @@ exports.handler = async function(event, context) {
       const oaUrl = 'https://api.openai.com/v1/chat/completions';
       const oaBody = {
         model: 'gpt-4o-mini',
-        messages: [
-          {
+      messages: [
+        {
             role: 'user',
             content: [
               { type: 'text', text: prompt },
               { type: 'image_url', image_url: { url: imageDataUrl } }
             ]
-          }
-        ],
-        max_tokens: 1000,
-        temperature: 0.7
-      };
+        }
+      ],
+      max_tokens: 1000,
+      temperature: 0.7
+    };
 
       const oaResp = await fetch(oaUrl, {
-        method: 'POST',
-        headers: {
+      method: 'POST',
+      headers: {
           'Authorization': `Bearer ${openaiKey}`,
-          'Content-Type': 'application/json'
-        },
+        'Content-Type': 'application/json'
+      },
         body: JSON.stringify(oaBody)
       });
 
@@ -225,11 +225,11 @@ exports.handler = async function(event, context) {
         ? aiMessage.content.map(part => (typeof part === 'string' ? part : part.text || '')).join('\n')
         : (aiMessage?.content || '');
 
-      const titleMatch = aiResponse.match(/\*\*标题：\*\*\s*([^\n]+)/);
-      const mainTextMatch = aiResponse.match(/\*\*正文：\*\*\s*([\s\S]*?)(?=\*\*标签：\*\*)/);
-      const hashtagsMatch = aiResponse.match(/\*\*标签：\*\*\s*([^\n]+)/);
-      const title = titleMatch ? titleMatch[1].trim() : "📚 辞海：知识的海洋，智慧的源泉";
-      const mainText = mainTextMatch ? mainTextMatch[1].trim() : "今天分享这本陪伴我多年的辞海！作为一部权威的综合性辞书，辞海不仅收录了丰富的词汇，更是中华文化的瑰宝。";
+    const titleMatch = aiResponse.match(/\*\*标题：\*\*\s*([^\n]+)/);
+    const mainTextMatch = aiResponse.match(/\*\*正文：\*\*\s*([\s\S]*?)(?=\*\*标签：\*\*)/);
+    const hashtagsMatch = aiResponse.match(/\*\*标签：\*\*\s*([^\n]+)/);
+    const title = titleMatch ? titleMatch[1].trim() : "📚 辞海：知识的海洋，智慧的源泉";
+    const mainText = mainTextMatch ? mainTextMatch[1].trim() : "今天分享这本陪伴我多年的辞海！作为一部权威的综合性辞书，辞海不仅收录了丰富的词汇，更是中华文化的瑰宝。";
       const hashtagsText = hashtagsMatch ? hashtagsMatch[1].trim() : "";
       const hashtags = mergeBaseTags(hashtagsText.match(/#[^\s#]+/g));
 
