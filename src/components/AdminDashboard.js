@@ -15,7 +15,8 @@ const AdminDashboard = () => {
   const fetchSubmissions = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/submissions');
+      const apiBase = process.env.REACT_APP_API_BASE || '/api';
+      const response = await fetch(`${apiBase}/submissions`);
       const data = await response.json();
       
       if (data.success) {
@@ -33,7 +34,8 @@ const AdminDashboard = () => {
 
   const updateStatus = async (id, newStatus) => {
     try {
-      const response = await fetch(`/api/update-status?id=${id}`, {
+      const apiBase = process.env.REACT_APP_API_BASE || '/api';
+      const response = await fetch(`${apiBase}/submissions/${id}/status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus })

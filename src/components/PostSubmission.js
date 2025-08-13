@@ -49,8 +49,8 @@ const PostSubmission = () => {
     setIsSubmitting(true);
     
     try {
-      // Submit to Netlify API
-      const response = await fetch('/.netlify/functions/submit-post', {
+      const apiBase = process.env.REACT_APP_API_BASE || '/api';
+      const response = await fetch(`${apiBase}/submit-post`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -189,10 +189,11 @@ const PhotoUpload = () => {
     });
   };
 
-  // Call our Netlify function for content generation
+  // Call backend API for content generation (works on Netlify and Zeabur)
   const callDeepSeekAPI = async (base64Image, mimeType) => {
     try {
-      const response = await fetch('/.netlify/functions/generate-content', {
+      const apiBase = process.env.REACT_APP_API_BASE || '/api';
+      const response = await fetch(`${apiBase}/generate-content`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ image: base64Image, mimeType })
