@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const path = require('path');
+const fs = require('fs');
 require('dotenv').config();
 
 const app = express();
@@ -9,8 +10,11 @@ const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(cors());
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+// Explicitly handle CORS preflight for all routes
+app.options('*', cors());
+// Increase body size limits to accept base64 images
+app.use(bodyParser.json({ limit: '2mb' }));
+app.use(bodyParser.urlencoded({ extended: true, limit: '2mb' }));
 
 // In-memory storage (replace with database in production)
 let submissions = [];
@@ -284,13 +288,18 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Serve static files from React build (for production)
+// Serve static files from React build (optional)
 if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../build')));
-  
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../build', 'index.html'));
-  });
+  const buildDir = path.join(__dirname, '../build');
+  if (process.env.SERVE_STATIC !== 'false' && fs.existsSync(buildDir)) {
+    app.use(express.static(buildDir));
+    app.get('*', (req, res) => {
+      res.sendFile(path.join(buildDir, 'index.html'));
+    });
+    console.log('Serving static frontend from /build');
+  } else {
+    console.log('Static build not found or disabled; running API-only');
+  }
 }
 
 app.listen(PORT, () => {
